@@ -994,7 +994,6 @@ function renderRankingTable() {
 }
 
 /* ==================== 赛历系统：图二级背景色与右侧详情联动 ==================== */
-let selectedCalendarViewWeek = null;
 
 // 映射赛事级别至背景色 class[cite: 2]
 function getEventStripClass(type) {
@@ -1096,7 +1095,36 @@ function getEventVenueInfo(eventName) {
   return defaultVenue;
 }
 
-// 主渲染函数：渲染 52 周卡片 (无 badge tag，纯背景色色块)
+/* ==================== 赛历系统：多赛季自由切换与历史回顾 ==================== */
+let selectedCalendarViewYear = null; // 当前正在查看的赛历年份
+let selectedCalendarViewWeek = null; // 当前正在查看的周次
+
+// 1. 切换赛历查看年份 (限制在 2026 到 玩家当前所在赛季 之间)
+function changeCalendarViewYear(delta) {
+  const currentActualYear = gameState.player.year;
+  if (!selectedCalendarViewYear) {
+    selectedCalendarViewYear = currentActualYear;
+  }
+
+  const targetYear = selectedCalendarViewYear + delta;
+  // 范围保护：不可早于起始赛季 2026，也不可查看尚未到达的未来年份
+  if (targetYear < 2026 || targetYear > currentActualYear) {
+    return;
+  }
+
+  selectedCalendarViewYear = targetYear;
+  renderCalendarTimeline();
+}
+
+// 2. 一键返回当前进行中的赛季
+function resetCalendarViewYear() {
+  selectedCalendarViewYear = gameState.player.year;
+  selectedCalendarViewWeek = gameState.player.week;
+  renderCalendarTimeline();
+  scrollToCurrentWeek();
+}
+
+// 3. 赛历 52 周卡片渲染
 function renderCalendarTimeline() {
   const container = document.getElementById('calendar-timeline');
   if (!container) return;
@@ -1105,16 +1133,26 @@ function renderCalendarTimeline() {
   const curW = gameState.player.week;
   const curY = gameState.player.year;
 
-  // 默认选中当前周
-  if (!selectedCalendarViewWeek) {
-    selectedCalendarViewWeek = curW;
+  // 默认查看玩家当前所在的年份与周次
+  if (!selectedCalendarViewYear) selectedCalendarViewYear = curY;
+  if (!selectedCalendarViewWeek) selectedCalendarViewWeek = curW;
+
+  const viewYear = selectedCalendarViewYear;
+
+  // 更新标题年份展示与「返回当前赛季」按钮显隐
+  const calYearEl = document.getElementById('cal-current-year');
+  if (calYearEl) calYearEl.innerText = viewYear;
+
+  const backBtn = document.getElementById('btn-cal-back-to-cur');
+  if (backBtn) {
+    backBtn.style.display = (viewYear !== curY) ? 'inline-block' : 'none';
   }
 
   for (let w = 1; w <= 52; w++) {
-    const isCur = (w === curW);
+    const isCur = (viewYear === curY && w === curW);
     const isSelected = (w === selectedCalendarViewWeek);
-    const events = isCur ? ensureWeekMeta().events : generateWeekEvents(w, curY);
-    const isPast = (w < curW);
+    const events = isCur ? ensureWeekMeta().events : generateWeekEvents(w, viewYear);
+    const isPast = (viewYear < curY) || (viewYear === curY && w < curW);
 
     const card = document.createElement('div');
     card.className = `timeline-card ${isCur ? 'current' : ''} ${isPast ? 'past' : ''} ${isSelected ? 'selected-view' : ''}`;
@@ -1124,7 +1162,7 @@ function renderCalendarTimeline() {
       selectedCalendarViewWeek = w;
       document.querySelectorAll('.timeline-card').forEach(c => c.classList.remove('selected-view'));
       card.classList.add('selected-view');
-      renderCalendarSidePanel(curY, w);
+      renderCalendarSidePanel(viewYear, w);
     };
 
     let eventsHtml = '';
@@ -1165,8 +1203,8 @@ function renderCalendarTimeline() {
     container.appendChild(card);
   }
 
-  // 同步刷新右侧 1/4 面板
-  renderCalendarSidePanel(curY, selectedCalendarViewWeek);
+  // 同步刷新右侧 1/4 面板（传入选中的查看年份）
+  renderCalendarSidePanel(viewYear, selectedCalendarViewWeek);
 }
 
 /* ==================== 战报核心归档与智能历史补齐引擎 ==================== */
@@ -1460,6 +1498,9 @@ function switchTab(tabId) {
   // 针对特定标签页做补充重绘
   if (tabId === 'tab-profile') drawRadarChart();
   if (tabId === 'tab-stats') renderStatsTab();
+  if (tabId === 'tab-news') {
+    renderNewsCenter();
+  }
   if (tabId === 'tab-ranking') renderRankingTable();
   if (tabId === 'tab-calendar') {
     renderCalendarTimeline();
@@ -1544,7 +1585,7 @@ function checkCanAdvanceWeek() {
   return { ok: true };
 }
 
-/* ==================== 推进周次逻辑 ==================== */
+/* ==================== 推进周次逻辑 (已修复语法闭合错误) ==================== */
 function advanceWeek() {
   let check = checkCanAdvanceWeek();
   if (!check.ok) {
@@ -1619,13 +1660,11 @@ function advanceWeek() {
 
   p.stamina = Math.max(5, Math.min(100, p.stamina));
 
-  // 判定本周是否实际参与了正式赛事 / 团体赛出战
   const playedThisWeek = Boolean(
     (gameState.currentTournament && gameState.currentTournament.week === p.week && !gameState.currentTournament.readOnly && gameState.currentTournament.discipline !== 'spectate') ||
     (gameState.currentTeamEvent && gameState.currentTeamEvent.week === p.week && gameState.currentTeamEvent.userSelected)
   );
 
-  // 只有在未参赛的周次（休息/集训/仅观赛）推进时，连续参赛负荷才重置为 0；参赛周则保持累加
   if (!playedThisWeek) {
     p.consecutiveTournaments = 0;
   }
@@ -1646,12 +1685,10 @@ function advanceWeek() {
   }
 
   // 3. 赞助周薪结算
-  // 3. 赞助周薪结算（1个器材赞助 + 无限个商业代言叠加发放）
   if (typeof ensurePlayerSponsors === 'function') {
     ensurePlayerSponsors();
   }
 
-  // A. 结算独占器材赞助
   if (p.sponsors?.gear) {
     const sp = p.sponsors.gear;
     p.money += (sp.weeklyPay || 0);
@@ -1662,7 +1699,6 @@ function advanceWeek() {
     }
   }
 
-  // B. 结算所有活跃的商业代言（各自发放周薪与独立倒计时）
   if (Array.isArray(p.sponsors?.commercials) && p.sponsors.commercials.length > 0) {
     let expiredCommercials = [];
     p.sponsors.commercials.forEach(c => {
@@ -1673,7 +1709,6 @@ function advanceWeek() {
       }
     });
 
-    // 移出已到期的商业代言
     p.sponsors.commercials = p.sponsors.commercials.filter(c => c.weeksLeft > 0);
 
     if (expiredCommercials.length > 0) {
@@ -1686,7 +1721,6 @@ function advanceWeek() {
   p.stamina = Math.max(5, p.stamina);
 
   // 4. 并行赛事结算
-  // 4. 并行赛事结算（观赛即已结算；未观赛的站点在此自动完成并持久化，保证全局唯一）
   const wmThisWeek = ensureWeekMeta();
   const curEventThisWeek = getEventForWeekAndYear(p.week, p.year);
   const userTournamentEventId = (gameState.currentTournament && gameState.currentTournament.week === p.week) ? gameState.currentTournament.eventId : null;
@@ -1708,14 +1742,12 @@ function advanceWeek() {
         }
         return;
       }
-      // 关键：直接通过 getOrBuildEventBracket 一站式完成单双打模拟与战绩结算，已生成的直接复用绝不重新随机
       getOrBuildEventBracket(ev);
     });
   }
 
   if (typeof sortDoublesRanking === 'function') sortDoublesRanking();
 
-  // --- 确保存档本周完赛的名次战报 ---
   if (gameState.currentTournament && gameState.currentTournament.week === p.week) {
     let t = gameState.currentTournament;
     if (t.mode === 'both') {
@@ -1732,8 +1764,15 @@ function advanceWeek() {
     p.week = 1;
     p.year++;
     p.age++;
+    // 同步更新 worldRanking 中我方选手条目的年龄快照，避免个人档案弹窗显示的年龄卡住不动
+    let userRankEntryForAge = gameState.worldRanking.find(x => x.isUser);
+    if (userRankEntryForAge) userRankEntryForAge.age = p.age;
     if (typeof handleSeasonAIAgingAndRetirements === 'function') handleSeasonAIAgingAndRetirements();
     if (typeof handleDoublesSeasonalReorganization === 'function') handleDoublesSeasonalReorganization();
+  }
+
+  if (typeof generateWeeklyNewsFeed === 'function') {
+    generateWeeklyNewsFeed();
   }
 
   if (typeof recomputeAllPoints === 'function') recomputeAllPoints();
@@ -1747,7 +1786,7 @@ function advanceWeek() {
   
   recordRankHistoryPoint();
   if (typeof recordDoublesRankHistoryPoint === 'function') {
-    recordDoublesRankHistoryPoint(); // 👈 每周推进时同步记录双打排名历史
+    recordDoublesRankHistoryPoint();
   }
 
   // 清空上周赛事状态
@@ -1766,6 +1805,7 @@ function advanceWeek() {
   saveGame();
   showWeekAdvanceToast(p.week, p.year);
 }
+
 let saveGameDebounceTimer = null;
 
 function saveGame(showAlert = false) {

@@ -71,7 +71,6 @@ function openMatchPreviewModal(match) {
     `;
   } 
   // 3. 渲染 1v1 单打预览
-  // 3. 渲染 1v1 单打预览 (支持展示年龄、职业年限、排名、最高排名、style、胜率和title)
   else if (oppSide) {
     let p = gameState.player;
     let s = gameState.stats;
@@ -155,15 +154,14 @@ function startMatchFromPreview() {
   openLiveMatch(matchToStart);
 }
 
-/* ==================== 单局数据统计：空模板 ==================== */
 function createEmptyGameStats() {
   return {
-    userServePts: 0, userServeWon: 0,   // 我方发球：发了几分、赢了几分
-    oppServePts: 0, oppServeWon: 0,     // 对方发球：发了几分、我方在对方发球时赢了几分
-    userPointsWon: 0, oppPointsWon: 0,  // 本局总赢分
-    maxLeadUser: 0, maxLeadOpp: 0,      // 本局最大领先（各自视角）
-    curStreak: 0, curStreakSide: null,  // 当前连续得分方与连胜数
-    maxStreakUser: 0, maxStreakOpp: 0   // 本局最多连续得分
+    userServePts: 0, userServeWon: 0,
+    oppServePts: 0, oppServeWon: 0,
+    userPointsWon: 0, oppPointsWon: 0,
+    maxLeadUser: 0, maxLeadOpp: 0,
+    curStreak: 0, curStreakSide: null,
+    maxStreakUser: 0, maxStreakOpp: 0
   };
 }
 
@@ -249,9 +247,8 @@ function stepLivePoint() {
   let userWonPoint = false;
   let commentaryText = "";
   let hudText = "";
-  let shotList = []; // 连续动作队列
+  let shotList = [];
 
-  // 1. 发球与接发博弈
   let serveDiff = serverStats.serve - receiverStats.receive;
   let aceProb = Math.max(0.01, Math.min(0.18, 0.02 + serveDiff * 0.002));
   let chiquitaProb = Math.max(0.08, Math.min(0.55, 0.15 + (receiverStats.receive - serverStats.serve) * 0.005));
@@ -259,10 +256,9 @@ function stepLivePoint() {
   let roll = Math.random();
 
   if (roll < aceProb) {
-    // 【发球直接得分 / 对方接发吃发球下网】
     userWonPoint = isUserServing;
     shotList.push({ isUser: isUserServing, action: 'serve', isWinner: false });
-    shotList.push({ isUser: !isUserServing, action: 'net_error', isWinner: false }); // 对方接发吃旋下网
+    shotList.push({ isUser: !isUserServing, action: 'net_error', isWinner: false });
 
     hudText = userWonPoint 
       ? `🟢 我方得分 (+1) · 对方接发吃旋转下网` 
@@ -273,13 +269,11 @@ function stepLivePoint() {
       : `<span style="color:var(--accent);">🌀 ${st.opp.name} 发出高质量隐蔽发球，我方接发下网失误！</span>`;
   } 
   else if (roll < aceProb + chiquitaProb) {
-    // 【接发拧拉抢攻】
     let attackValue = receiverStats.bhSpeed * 0.7 + receiverStats.receive * 0.3;
     let defenseValue = serverStats.rally * 0.7 + serverStats.footwork * 0.3;
     let attackSuccessProb = Math.max(0.20, Math.min(0.85, 0.50 + (attackValue - defenseValue) * 0.015));
 
     if (Math.random() < attackSuccessProb) {
-      // 拧拉直接一击制胜（3拍：发球 -> 强拧绝杀 -> 发球方扑救不及）
       userWonPoint = !isUserServing;
       shotList.push({ isUser: isUserServing, action: 'serve', isWinner: false });
       shotList.push({ isUser: !isUserServing, action: 'chiquita', isWinner: true });
@@ -292,7 +286,6 @@ function stepLivePoint() {
         ? `<span style="color:var(--accent-blue);">⚡ 我方看准来球台内反手强力拧拉直线绝杀得分！</span>`
         : `<span style="color:var(--accent);">⚡ ${st.opp.name} 迎前反手霸气强拧大角度变线，我方扑救不及失分！</span>`;
     } else {
-      // 拧拉被防住 -> 展开 4~8 板攻防多回合对拉
       let rallyDiff = (computeUserCombatPower() - (st.opp.power || 65)) + (st.userFormJitter - st.oppFormJitter);
       userWonPoint = Math.random() < pointWinProb(rallyDiff, { clutch: (u.mental - oppStats.mental) * 0.002 });
 
@@ -306,7 +299,6 @@ function stepLivePoint() {
         currentHitter = !currentHitter;
       }
 
-      // 最后一板由失误方打出真实出界或下网
       const loserIsUser = !userWonPoint;
       const errorAction = Math.random() < 0.5 ? 'net_error' : 'out_error';
       shotList.push({ isUser: loserIsUser, action: errorAction, isWinner: false });
@@ -322,7 +314,6 @@ function stepLivePoint() {
     }
   } 
   else {
-    // 【多拍相持大战：发球 -> 搓短过渡 -> 6~12 板中远台相持对拉】
     let rallyDiff = (computeUserCombatPower() - (st.opp.power || 65)) + (st.userFormJitter - st.oppFormJitter);
     let isClutch = st.userPoints >= 9 && st.oppPoints >= 9;
     userWonPoint = Math.random() < pointWinProb(rallyDiff, { clutch: isClutch ? (u.mental - oppStats.mental) * 0.003 : 0 });
@@ -341,7 +332,6 @@ function stepLivePoint() {
       currentHitter = !currentHitter;
     }
 
-    // 最后一板由失误方下网或出界
     const loserIsUser = !userWonPoint;
     const errorAction = Math.random() < 0.5 ? 'net_error' : 'out_error';
     shotList.push({ isUser: loserIsUser, action: errorAction, isWinner: false });
@@ -356,29 +346,22 @@ function stepLivePoint() {
       : `<span style="color:var(--accent);">🏓 双方连续对拉 ${totalShots} 板，我方退台反拉回球${errorLabel}失误！</span>`;
   }
 
-  // 2. 开始执行物理轨迹动画；动画全部落地死球后才触发比分结算与解说显示
-  // 提取公共的得分结算函数
   const applyPointOutcome = () => {
-    // 弹出专业无火花转播条
     showBroadcastHUD(hudText, userWonPoint ? 'user' : 'opp');
 
-    // 计分与数据同步
     if (userWonPoint) st.userPoints++; else st.oppPoints++;
     st.totalServesInGame++;
     recordPointStats(st, isUserServing, userWonPoint);
 
-    // 轮换发球判断 (10平后每1球换发，平时每2球换发)
     let deuce = st.userPoints >= 10 && st.oppPoints >= 10;
     if (deuce || st.totalServesInGame % 2 === 0) {
       st.server = (st.server === 'user') ? 'opp' : 'user';
     }
 
-    // 更新文字解说
     let logHtml = `<div>• <strong>[${st.userPoints} : ${st.oppPoints}]</strong> ${commentaryText}</div>`;
     const feed = document.getElementById('live-commentary');
     if (feed) feed.innerHTML = logHtml + feed.innerHTML;
 
-    // 局胜负判定
     if ((st.userPoints >= 11 || st.oppPoints >= 11) && Math.abs(st.userPoints - st.oppPoints) >= 2) {
       let userWonGame = st.userPoints > st.oppPoints;
       if (userWonGame) st.userGames++; else st.oppGames++;
@@ -410,12 +393,10 @@ function stepLivePoint() {
     updateLiveScoreboard();
   };
 
-  // 2. 根据设置判断是否播放 3D 动画
   const isAnimEnabled = gameState.settings ? gameState.settings.enable3DAnim !== false : true;
   if (isAnimEnabled) {
     startRallyAnimation(shotList, applyPointOutcome);
   } else {
-    // 关闭动画时直接执行结算，无延迟
     applyPointOutcome();
   }
 }
@@ -423,13 +404,11 @@ function stepLivePoint() {
 function skipLiveMatch() {
   stopLiveAutoplay();
   updateLiveAutoplayButtonLabel();
-  // 清空正在排队的动画
   rallyQueue = [];
   isRallyAnimating = false;
   currentTrajectory = null;
 
   while(liveMatchState && !liveMatchState.isFinished) {
-    // 快速步进并瞬时结算
     stepLivePoint();
     if (isRallyAnimating && onRallyFinishedCallback) {
       onRallyFinishedCallback();
@@ -454,7 +433,6 @@ function updateLiveScoreboard() {
   let totalGamesCount = Math.max(st.userGameScores.length, st.oppGameScores.length);
   
   for (let i = 0; i < totalGamesCount; i++) {
-    // 修复点：使用 (val !== undefined ? val : '') 避免 0 被当作假值过滤掉
     let p1ScoreText = st.userGameScores[i] !== undefined ? st.userGameScores[i] : '';
     let p2ScoreText = st.oppGameScores[i] !== undefined ? st.oppGameScores[i] : '';
     
@@ -491,7 +469,6 @@ function startLiveAutoplay(speed) {
 
 function toggleLiveAutoplay() {
   if (!liveMatchState || liveMatchState.isFinished) return;
-  // 循环：关闭 -> 1x -> 2x -> 4x -> 关闭
   const nextSpeedMap = { 0: 1, 1: 2, 2: 4, 4: 0 };
   const next = nextSpeedMap[liveAutoplaySpeed];
   if (next === 0) {
@@ -511,7 +488,6 @@ function closeLiveModal() {
   const st = liveMatchState;
   const isDoubles = Boolean(st.isDoubles || st.match?.isDoubles);
   
-  // 安全获取当前子赛事对象
   let rootTour = gameState.currentTournament;
   let tour = rootTour;
   if (rootTour && rootTour.mode === 'both') {
@@ -527,9 +503,13 @@ function closeLiveModal() {
   let isP1User = Boolean(st.match.p1?.isUser);
   let p1FinalGames = isP1User ? st.userGames : st.oppGames;
   let p2FinalGames = isP1User ? st.oppGames : st.userGames;
+  
+  let formattedGameDetails = (st.userGameScores || []).map((sc, idx) => `${sc}-${st.oppGameScores[idx] || 0}`).join(', ');
+  
   st.match.score = `${p1FinalGames} - ${p2FinalGames}`;
+  st.match.scoreDetails = formattedGameDetails ? `(${formattedGameDetails})` : `(${p1FinalGames}-${p2FinalGames})`;
 
-  // ----------------- 1. 双打专属数据结算 -----------------
+  // 1. 双打专属数据结算
   if (isDoubles) {
     const ds = gameState.doublesStats;
     const partner = gameState.playerDoubles?.currentPartner;
@@ -573,7 +553,7 @@ function closeLiveModal() {
     let logText = `[${gameState.player.year}年 第${gameState.player.week}周 | ${tour?.name || '巡回赛'}] 👥 男双 ${roundName} 对决 【${oppName}】，比分 ${st.userGames}-${st.oppGames} (${userWon ? '🔥 获胜' : '❌ 失利'})`;
     gameState.matchHistory.unshift(logText);
   } 
-  // ----------------- 2. 单打专属数据结算 -----------------
+  // 2. 单打专属数据结算
   else {
     const s = gameState.stats;
     s.totalMatches++;
@@ -615,7 +595,6 @@ function closeLiveModal() {
     }
     if (userWon) gameState.h2hData[oppName].wins++; else gameState.h2hData[oppName].losses++;
     
-    let formattedGameDetails = st.userGameScores.map((sc, idx) => `${sc}-${st.oppGameScores[idx]}`).join(', ');
     gameState.h2hData[oppName].matches.unshift({
       week: tour?.week || gameState.player.week,
       year: gameState.player.year,
@@ -629,7 +608,6 @@ function closeLiveModal() {
     gameState.matchHistory.unshift(logText);
   }
 
-  // 执行轮次推进
   finishCurrentRound(userWon, isDoubles);
 }
 
@@ -639,7 +617,6 @@ function simulatePureAIRound() {
   finishCurrentRound(false);
 }
 
-// 聚合多局数据为一份"全场"统计
 function aggregateGameStats(games) {
   const agg = createEmptyGameStats();
   games.forEach(g => {
@@ -657,12 +634,10 @@ function aggregateGameStats(games) {
   return agg;
 }
 
-/* ==================== 记录单分数据（发球方/得分方），用于赛后"对局数据"面板 ==================== */
 function recordPointStats(st, isUserServing, userWonPoint) {
   const g = st.games[st.games.length - 1];
   if (!g) return;
 
-  // 发球 / 接发得分统计
   if (isUserServing) {
     g.userServePts++;
     if (userWonPoint) g.userServeWon++;
@@ -671,15 +646,12 @@ function recordPointStats(st, isUserServing, userWonPoint) {
     if (!userWonPoint) g.oppServeWon++;
   }
 
-  // 本局总赢分
   if (userWonPoint) g.userPointsWon++; else g.oppPointsWon++;
 
-  // 最大领先（以本局当前比分差为准）
   const lead = g.userPointsWon - g.oppPointsWon;
   if (lead > g.maxLeadUser) g.maxLeadUser = lead;
   if (-lead > g.maxLeadOpp) g.maxLeadOpp = -lead;
 
-  // 最多连续得分
   const side = userWonPoint ? 'user' : 'opp';
   if (g.curStreakSide === side) {
     g.curStreak++;
@@ -691,8 +663,7 @@ function recordPointStats(st, isUserServing, userWonPoint) {
   if (side === 'opp' && g.curStreak > g.maxStreakOpp) g.maxStreakOpp = g.curStreak;
 }
 
-/* ==================== 对局数据统计弹窗：全场 + 逐局切换 (仿 WTT 官方数据表) ==================== */
-let matchStatsActiveTab = 'all'; // 'all' | 0,1,2... (局索引)
+let matchStatsActiveTab = 'all';
 
 function openMatchStatsModal() {
   if (!liveMatchState) return;
@@ -701,11 +672,9 @@ function openMatchStatsModal() {
   document.getElementById('stats-p1-name').innerText = '我方 ' + (st.user.name || '选手');
   document.getElementById('stats-p2-name').innerText = st.opp.name || '对手';
 
-  // 生成 Tab 栏：全场 + G1、G2...
   const tabRow = document.getElementById('stats-tab-row');
   let tabHtml = `<button class="stats-tab-btn ${matchStatsActiveTab === 'all' ? 'active' : ''}" onclick="switchMatchStatsTab('all')">全场</button>`;
   st.games.forEach((g, idx) => {
-    // 未开始的局（例如比赛在此局中途结束）不显示空 tab
     if (g.userPointsWon === 0 && g.oppPointsWon === 0 && idx > 0 && idx >= st.games.length - 1 && !st.isFinished) return;
     tabHtml += `<button class="stats-tab-btn ${matchStatsActiveTab === idx ? 'active' : ''}" onclick="switchMatchStatsTab(${idx})">G${idx + 1}</button>`;
   });
@@ -744,7 +713,6 @@ function renderMatchStatsBody() {
   const totalPts = g.userPointsWon + g.oppPointsWon;
   const userServeWinRate = g.userServePts > 0 ? Math.round((g.userServeWon / g.userServePts) * 100) : 0;
   const oppServeWinRate = g.oppServePts > 0 ? Math.round((g.oppServeWon / g.oppServePts) * 100) : 0;
-  // 我方接发得分率 = 对方发球时我方赢得的分 / 对方发球总分数
   const userReceiveWinRate = g.oppServePts > 0 ? Math.round(((g.oppServePts - g.oppServeWon) / g.oppServePts) * 100) : 0;
   const oppReceiveWinRate = g.userServePts > 0 ? Math.round(((g.userServePts - g.userServeWon) / g.userServePts) * 100) : 0;
 
@@ -778,7 +746,6 @@ function statsRow(label, p1Val, p2Val, p1Pct) {
   `;
 }
 
-/* ==================== 历史伤病记录弹窗逻辑 ==================== */
 function openInjuryHistoryModal(playerName) {
   if (!playerName) return;
   const modal = document.getElementById('injury-history-modal');
@@ -791,7 +758,6 @@ function openInjuryHistoryModal(playerName) {
 
   title.innerHTML = `🏥 【${playerName}】历史伤病档案`;
 
-  // 获取当前状态
   let curStatusHtml = '<span style="color:#10b981; font-weight:bold;">🟢 当前完全健康</span>';
   if (isUser) {
     if (gameState.player.injury && INJURY_TYPES[gameState.player.injury]) {
@@ -802,7 +768,6 @@ function openInjuryHistoryModal(playerName) {
     curStatusHtml = `<span style="color:var(--accent); font-weight:bold;">🚨 当前处于伤病：${p.injury}</span>`;
   }
 
-  // 获取历史伤病记录列表
   let injuryLogs = [];
   if (isUser) {
     injuryLogs = gameState.player.injuryHistory || [];
@@ -851,7 +816,6 @@ function closeInjuryHistoryModal() {
   document.getElementById('injury-history-modal').style.display = 'none';
 }
 
-/* ==================== 退役球员名人堂与奖牌榜排序 ==================== */
 function openRetiredPlayersModal() {
   const modal = document.getElementById('retired-players-modal');
   const tbody = document.getElementById('retired-players-tbody');
@@ -872,7 +836,6 @@ function openRetiredPlayersModal() {
     return;
   }
 
-  // 1. 为每位退役球员统计金、银、铜奖牌数
   list.forEach(p => {
     let medals = getPlayerMedalsList(p.name);
     p.goldCount = medals.filter(m => m.medal === 'G').length;
@@ -881,7 +844,6 @@ function openRetiredPlayersModal() {
     p.totalMedals = p.goldCount + p.silverCount + p.bronzeCount;
   });
 
-  // 2. 严格按照 金牌数 > 银牌数 > 铜牌数 > 生涯胜场数 降序排列
   list.sort((a, b) => {
     if (b.goldCount !== a.goldCount) return b.goldCount - a.goldCount;
     if (b.silverCount !== a.silverCount) return b.silverCount - a.silverCount;
@@ -889,7 +851,6 @@ function openRetiredPlayersModal() {
     return (b.careerWins || 0) - (a.careerWins || 0);
   });
 
-  // 3. 渲染表格数据
   tbody.innerHTML = list.map((p, idx) => {
     let rankBadge = idx === 0 
       ? `<span style="color:#f59e0b; font-weight:900; font-size:1.05rem;">🥇 1</span>`
@@ -930,7 +891,6 @@ function closeRetiredPlayersModal() {
   document.getElementById('retired-players-modal').style.display = 'none';
 }
 
-// 打开生涯奖牌榜弹窗
 function openCareerMedalsModal() {
   ensureCareerMedals();
   const modal = document.getElementById('career-medals-modal');
@@ -961,7 +921,6 @@ function openCareerMedalsModal() {
       let list = medals.filter(m => m.groupKey === grp.key);
       if (list.length === 0) return;
 
-      // 按年份从早到晚排序
       list.sort((a, b) => a.year - b.year || a.week - b.week);
 
       let rowsHtml = list.map(item => {
@@ -982,7 +941,6 @@ function openCareerMedalsModal() {
         `;
       }).join('');
 
-      // 修改后（加上 flex-shrink: 0，禁止被父容器压缩，保证完整高度与正常滚动）：
       html += `
         <div style="background:var(--bg-card-alt); border:1px solid var(--border); border-radius:12px; overflow:hidden; flex-shrink: 0;">
           <div style="background:linear-gradient(180deg, #1a253e 0%, #111a30 100%); padding:8px 14px; text-align:center; font-weight:bold; color:var(--accent-gold); font-size:0.92rem; border-bottom:1px solid var(--border);">
@@ -1003,7 +961,6 @@ function closeCareerMedalsModal() {
   document.getElementById('career-medals-modal').style.display = 'none';
 }
 
-// 打开任意选手的专属奖牌榜弹窗
 function openPlayerCareerMedalsModal(playerName) {
   if (!playerName) return;
   const medals = getPlayerMedalsList(playerName);
@@ -1052,7 +1009,6 @@ function openPlayerCareerMedalsModal(playerName) {
         `;
       }).join('');
 
-      // 修改后（加上 flex-shrink: 0，禁止被父容器压缩，保证完整高度与正常滚动）：
       html += `
         <div style="background:var(--bg-card-alt); border:1px solid var(--border); border-radius:12px; overflow:hidden; flex-shrink: 0;">
           <div style="background:linear-gradient(180deg, #1a253e 0%, #111a30 100%); padding:8px 14px; text-align:center; font-weight:bold; color:var(--accent-gold); font-size:0.92rem; border-bottom:1px solid var(--border);">
@@ -1067,9 +1023,6 @@ function openPlayerCareerMedalsModal(playerName) {
   modal.style.display = 'flex';
 }
 
-/* ==================== 终身生涯奖牌榜系统 (永久持久化) ==================== */
-
-// 1. 永久生涯奖牌记录器（支持玩家与任意 AI 选手，单打/双打/团体独立持久化）
 function recordCareerMedal(targetPlayer, type, year, week, eventName, eventType, discipline = "男子单打") {
   let pName = (typeof targetPlayer === 'string') 
     ? targetPlayer 
@@ -1098,7 +1051,6 @@ function recordCareerMedal(targetPlayer, type, year, week, eventName, eventType,
     discipline: discipline
   };
 
-  // 1. 玩家本人存入全局 careerMedals
   if (isUser) {
     if (!gameState.careerMedals) gameState.careerMedals = [];
     let exists = gameState.careerMedals.some(m => 
@@ -1107,7 +1059,6 @@ function recordCareerMedal(targetPlayer, type, year, week, eventName, eventType,
     if (!exists) gameState.careerMedals.push(medalObj);
   }
 
-  // 2. 所有选手（包含 AI）永久存入个人对象的 careerMedals 数组中
   if (pObj) {
     if (!pObj.careerMedals) pObj.careerMedals = [];
     let exists = pObj.careerMedals.some(m => 
@@ -1117,7 +1068,6 @@ function recordCareerMedal(targetPlayer, type, year, week, eventName, eventType,
   }
 }
 
-// 2. 自动从历史赛历战报（tournamentPodiums）中扫描并找回从第1周起所有历史奖牌
 function ensureCareerMedals() {
   if (!gameState.careerMedals) gameState.careerMedals = [];
 
@@ -1128,7 +1078,6 @@ function ensureCareerMedals() {
     recordCareerMedal(clean, type, year, week, evName, "", disc);
   };
 
-  // 扫描全历史赛历领奖台数据，自动恢复所有被顶出 recentMatches 的奖牌
   if (gameState.tournamentPodiums) {
     for (let key in gameState.tournamentPodiums) {
       let [y, w] = key.split('_').map(Number);
@@ -1142,15 +1091,12 @@ function ensureCareerMedals() {
         let isDoubles = evName.includes("双打") || evName.includes("Doubles");
         let disc = isTeam ? "男子团体" : (isDoubles ? "男子双打" : "男子单打");
 
-        // 冠军 (Gold)
         if (pData.champion) {
           pData.champion.split('/').forEach(name => addMedalToObj(name.trim(), 'G', y, w, evName, disc));
         }
-        // 亚军 (Silver)
         if (pData.runnerUp) {
           pData.runnerUp.split('/').forEach(name => addMedalToObj(name.trim(), 'S', y, w, evName, disc));
         }
-        // 季军/四强 (Bronze)
         if (pData.thirds && Array.isArray(pData.thirds)) {
           pData.thirds.forEach(t => {
             t.split('、').forEach(subT => {
@@ -1180,11 +1126,9 @@ function getPlayerMedalsList(playerName) {
   return [];
 }
 
-/* ==================== 历史世界排名走势弹窗 (单打/双打通用) ==================== */
 let currentRankHistoryPeriod = '10w';
-let currentRankHistoryMode = 'singles'; // 'singles' | 'doubles'
+let currentRankHistoryMode = 'singles';
 
-// 打开单打历史走势
 function openRankHistoryModal() {
   currentRankHistoryMode = 'singles';
   if (!gameState.player.rankHistory || gameState.player.rankHistory.length === 0) {
@@ -1194,7 +1138,6 @@ function openRankHistoryModal() {
   renderRankHistoryChart(currentRankHistoryPeriod);
 }
 
-// 打开双打历史走势
 function openDoublesRankHistoryModal() {
   currentRankHistoryMode = 'doubles';
   if (!gameState.playerDoubles.rankHistory || gameState.playerDoubles.rankHistory.length === 0) {
@@ -1207,7 +1150,6 @@ function openDoublesRankHistoryModal() {
 function renderRankHistoryChart(period) {
   currentRankHistoryPeriod = period;
 
-  // 高亮周期按钮
   document.querySelectorAll('.rank-period-btn').forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-period') === period);
   });
@@ -1218,7 +1160,6 @@ function renderRankHistoryChart(period) {
     titleEl.innerHTML = isDoubles ? `👥 历史双打组合世界排名走势` : `📈 历史单打世界排名走势`;
   }
 
-  // 区分数据源
   const hist = isDoubles 
     ? (gameState.playerDoubles?.rankHistory || []).slice().sort((a, b) => a.abs - b.abs)
     : (gameState.player.rankHistory || []).slice().sort((a, b) => a.abs - b.abs);
@@ -1257,7 +1198,6 @@ function renderRankHistoryChart(period) {
     displayPoints = displayPoints.filter((pt, idx) => idx === 0 || pt.abs !== displayPoints[idx - 1].abs);
   }
 
-  // 顶部摘要
   const curRank = hist[hist.length - 1].rank;
   const bestRankEver = Math.min(...hist.map(h => h.rank));
   const rangeStartRank = filtered[0].rank;
@@ -1342,7 +1282,6 @@ function closeRankHistoryModal() {
   hideRankTooltip();
 }
 
-// 奖杯明细弹窗打开与渲染
 function openTrophyDetailModal(catKey) {
   ensureTrophyRecords();
   const meta = TROPHY_CAT_META[catKey] || { name: "冠军荣誉", icon: "🏆", badge: "badge-gold" };
@@ -1352,7 +1291,6 @@ function openTrophyDetailModal(catKey) {
 
   title.innerHTML = `${meta.icon} ${meta.name} 夺冠历程`;
 
-  // 过滤该分类下的全部夺冠记录
   const list = gameState.trophyRecords.filter(t => t.categoryKey === catKey);
 
   if (list.length === 0) {
