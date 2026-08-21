@@ -478,7 +478,9 @@ function generateWeeklyNewsFeed() {
   }
 
   // 4. 商业器材 (Biz)
+  // 4. 商业器材 (Biz) - 仅在玩家有真实签约或代言时播报，不生成虚假无中生有的通稿
   const gearSponsor = p.sponsors?.gear || (p.sponsor ? p.sponsor : null);
+  const commercials = p.sponsors?.commercials || [];
   const bladeId = p.gear?.blade || 'b1';
   const bladeObj = (typeof GEAR_DATABASE !== 'undefined' && GEAR_DATABASE.blade) ? GEAR_DATABASE.blade.find(b => b.id === bladeId) : null;
   const bladeName = bladeObj ? bladeObj.name : "特注专业底板";
@@ -488,20 +490,21 @@ function generateWeeklyNewsFeed() {
       id: `news_${reportYear}_${reportWeek}_user_sponsor`,
       week: reportWeek, year: reportYear, category: 'biz', isUser: true, icon: '💼',
       source: '体育商业周刊',
-      title: `特注装备护航！${gearSponsor.name} 鼎力支持 ${p.name}`,
-      snippet: `作为签约国手，${p.name} 每周享有 $${gearSponsor.weeklyPay || 0} 赞助津贴，主力手板使用【${bladeName}】。`,
-      content: `【器材商业观察】知名品牌【${gearSponsor.name}】对旗下签约国手 ${p.name} 的表现给予高度肯定。品牌研发团队表示，已为其手板【${bladeName}】量身调校出击球弧线更长、底劲更充沛的专属配置。`,
+      title: `品牌护航！【${gearSponsor.name}】官方支持签约选手【${p.name}】`,
+      snippet: `作为【${gearSponsor.name}】签约选手，${p.name} 每周享有 $${gearSponsor.weeklyPay || 0} 专属津贴，手板配置为【${bladeName}】。`,
+      content: `【品牌特稿】知名器材赞助商【${gearSponsor.name}】对旗下签约选手 ${p.name} 近期的赛场表现表示认可。品牌技术服务团队已为其量身调校【${bladeName}】，保障在后续高强度对抗中的击球质量。`,
       comments: generateDynamicComments(p.name, "general")
     });
-  } else {
+  } else if (commercials.length > 0) {
+    const mainComm = commercials[0];
     weeklyBatch.push({
-      id: `news_${reportYear}_${reportWeek}_gear_trends_${Math.random()}`,
-      week: reportWeek, year: reportYear, category: 'biz', isUser: false, icon: '🛒',
-      source: '乒乓器材装备志',
-      title: `器材风向标：内置芳碳底板与微孔高粘套胶成为国手主流配置`,
-      snippet: `针对新材料球速度衰减快的特点，兼具高弹与持球手感的复合碳素底板受到顶级选手青睐。`,
-      content: `【装备评测】最新巡回赛器材普查显示，前 50 名选手中超过 70% 选用外置/内置芳碳底板搭配正手高粘蓝海绵。各大器材商正加快推出全新旗舰产品以满足职业选手对高旋转的需求。`,
-      comments: generateDynamicComments("装备专家", "general")
+      id: `news_${reportYear}_${reportWeek}_user_comm_${mainComm.id}`,
+      week: reportWeek, year: reportYear, category: 'biz', isUser: true, icon: '💼',
+      source: '商业财经前沿',
+      title: `商业价值飙升！【${p.name}】携手【${mainComm.name}】商业代言`,
+      snippet: `${p.name} 持续受到商务品牌青睐，目前持有【${mainComm.name}】等多项商业代言合同。`,
+      content: `【商业观察】世界排名稳步提升的 ${p.name} 在商业市场表现抢眼，目前正执行与【${mainComm.name}】等品牌的商业广告合作，每周为选手团队带来稳定的资金支持。`,
+      comments: generateDynamicComments(p.name, "general")
     });
   }
 

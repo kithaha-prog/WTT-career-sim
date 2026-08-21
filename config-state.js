@@ -714,3 +714,266 @@ function recordDoublesRankHistoryPoint() {
   }
 }
 
+/* ==================== 1. AI 选手装备分配与生成器 ==================== */
+
+// 根据选手世界排名与综合战力，从官方 GEAR_DATABASE 挑选合规器材
+function assignAIGear(playerObj, rank = 999) {
+  if (!playerObj || playerObj.isUser) return;
+
+  const pow = playerObj.basePow || 60;
+  
+  // 1. 确定器材阶位 Tier (1~4)
+  let targetTier = 1;
+  if (rank <= 15 || pow >= 86) {
+    targetTier = 4; // 国手顶级
+  } else if (rank <= 80 || pow >= 74) {
+    targetTier = Math.random() < 0.75 ? 3 : 4; // 专业级为主，小概率越级
+  } else if (rank <= 250 || pow >= 60) {
+    targetTier = 2; // 进阶级
+  } else {
+    targetTier = Math.random() < 0.3 ? 2 : 1; // 入门/普及
+  }
+
+  // 2. 特殊名将招牌底板匹配（从真实底板库匹配）
+  let pName = playerObj.name || "";
+  let pickedBlade = null;
+
+  if (pName.includes("樊振东")) {
+    pickedBlade = GEAR_DATABASE.blade.find(b => b.id === 'b31' || b.id === 'b19');
+  } else if (pName.includes("马龙")) {
+    pickedBlade = GEAR_DATABASE.blade.find(b => b.id === 'b39' || b.id === 'b42');
+  } else if (pName.includes("张本")) {
+    pickedBlade = GEAR_DATABASE.blade.find(b => b.id === 'b33' || b.id === 'b20');
+  } else if (pName.includes("波尔")) {
+    pickedBlade = GEAR_DATABASE.blade.find(b => b.id === 'b35' || b.id === 'b18');
+  } else if (pName.includes("林昀儒")) {
+    pickedBlade = GEAR_DATABASE.blade.find(b => b.id === 'b21');
+  } else if (pName.includes("奥恰")) {
+    pickedBlade = GEAR_DATABASE.blade.find(b => b.id === 'b34');
+  }
+
+  // 3. 通用从指定阶位池抽取器材
+  const filterByTier = (list, t) => {
+    let pool = list.filter(item => String(item.tier) === String(t));
+    if (pool.length === 0) pool = list.filter(item => Number(item.tier) <= Number(t));
+    return pool[Math.floor(Math.random() * pool.length)];
+  };
+
+  const blade = pickedBlade || filterByTier(GEAR_DATABASE.blade, targetTier);
+  const fh = filterByTier(GEAR_DATABASE.fh, targetTier);
+  const bh = filterByTier(GEAR_DATABASE.bh, targetTier);
+  const shoes = filterByTier(GEAR_DATABASE.shoes, targetTier);
+
+  playerObj.gear = {
+    blade: blade ? blade.id : 'b1',
+    fh: fh ? fh.id : 'f1',
+    bh: bh ? bh.id : 'bh1',
+    shoes: shoes ? shoes.id : 's1'
+  };
+}
+
+/* ==================== 2. 通用 12 维真实属性计算 (玩家与 AI 完全相同) ==================== */
+
+// 通用：计算任意选手（玩家或 AI）穿戴装备后的 12 维真实属性
+function getEffectiveStatsForPlayer(playerObj) {
+  if (!playerObj || playerObj.isUser) {
+    return getEffectiveStats();
+  }
+
+  // 确保 AI 身上拥有来自器材库的装备
+  if (!playerObj.gear) {
+    let rank = gameState.worldRanking.indexOf(playerObj) + 1;
+    assignAIGear(playerObj, rank > 0 ? rank : 999);
+  }
+
+  let b = GEAR_DATABASE.blade.find(x => x.id === playerObj.gear.blade) || { speed: 0, spin: 0, control: 0 };
+  let f = GEAR_DATABASE.fh.find(x => x.id === playerObj.gear.fh) || { speed: 0, spin: 0, control: 0 };
+  let bk = GEAR_DATABASE.bh.find(x => x.id === playerObj.gear.bh) || { speed: 0, spin: 0, control: 0 };
+  let sh = GEAR_DATABASE.shoes.find(x => x.id === playerObj.gear.shoes) || { footwork: 0, speed: 0 };
+
+  if (!playerObj.baseStats) {
+    playerObj.baseStats = generateAI12Stats(playerObj.basePow || 60, playerObj.style || "");
+  }
+  let p = playerObj.baseStats;
+
+  return {
+    fhPower: Math.max(10, Math.min(99, (p.fhPower || 35) + f.speed * 0.8 + b.speed * 0.4)),
+    bhSpeed: Math.max(10, Math.min(99, (p.bhSpeed || 35) + bk.speed * 0.8 + b.speed * 0.3)),
+    spin: Math.max(10, Math.min(99, (p.spin || 35) + f.spin * 0.5 + bk.spin * 0.3 + b.spin * 0.3)),
+    touch: Math.max(10, Math.min(99, (p.touch || 35) + b.control * 0.5 + f.control * 0.3)),
+    rally: Math.max(10, Math.min(99, (p.rally || 35) + b.control * 0.4 + bk.control * 0.3 + b.spin * 0.2)),
+    serve: Math.max(10, Math.min(99, (p.serve || 35) + f.spin * 0.4 + b.spin * 0.2 + b.control * 0.2)),
+    receive: Math.max(10, Math.min(99, (p.receive || 35) + bk.control * 0.4 + b.control * 0.3)),
+    speed: Math.max(10, Math.min(99, (p.speed || 35) + sh.speed * 0.6)),
+    footwork: Math.max(10, Math.min(99, (p.footwork || 35) + (sh.footwork || 0))),
+    endurance: Math.max(10, Math.min(99, p.endurance || 35)),
+    mental: Math.max(10, Math.min(99, p.mental || 35)),
+    tactics: Math.max(10, Math.min(99, p.tactics || 35))
+  };
+}
+
+// 通用：计算选手综合战力（综评 Overall），完全基于 12 维加权算法
+function computePlayerCombatPower(playerObj) {
+  let s = getEffectiveStatsForPlayer(playerObj);
+  return +(
+    (s.fhPower || 30) * 0.12 + (s.bhSpeed || 30) * 0.10 + (s.spin || 30) * 0.10 +
+    (s.touch || 30) * 0.08 + (s.rally || 30) * 0.08 + (s.serve || 30) * 0.08 +
+    (s.receive || 30) * 0.08 + (s.speed || 30) * 0.08 + (s.footwork || 30) * 0.08 +
+    (s.endurance || 30) * 0.06 + (s.mental || 30) * 0.07 + (s.tactics || 30) * 0.07
+  ).toFixed(1);
+}
+
+// 保持对旧代码 computeUserCombatPower 的兼容
+function computeUserCombatPower() {
+  return computePlayerCombatPower(gameState.player);
+}
+/* ==================== 3. AI 低概率年度器材更换机制 ==================== */
+
+/* ==================== 3. AI 低概率年度器材更换机制 ==================== */
+
+// 在每年赛季结束推进时触发：AI 有极低几率触发器材调校与升级
+/* ==================== 多样化 AI 换装新闻生成器 ==================== */
+function createAIGearChangeNews(pl, oldBladeId, newBlade, curRank) {
+  if (!newBlade || newBlade.id === oldBladeId) return null;
+
+  const isTopStar = curRank <= 15;
+  const isRisingPro = curRank <= 80;
+  const rankTag = isTopStar ? "世界顶尖巨星" : (isRisingPro ? "巡回赛主力名将" : "巡回赛冲分新锐");
+  const tierName = newBlade.tier === '4' || newBlade.tier === 4 ? "国手旗舰特注" : (newBlade.tier === '3' || newBlade.tier === 3 ? "专业竞技底板" : "进阶实战手板");
+  const brandName = (typeof extractGearBrand === 'function') ? extractGearBrand(newBlade) : "专业";
+
+  // 1. 根据选手排位匹配多样化新闻标题
+  const titleTemplates = isTopStar ? [
+    `神兵再调校！${rankTag}【${pl.name}】秘密换装【${newBlade.name}】`,
+    `巅峰利刃！【${pl.name}】携全新【${newBlade.name}】出战新赛季`,
+    `重炮升级！【${pl.name}】正式列装【${brandName}】旗舰【${newBlade.name}】`
+  ] : (isRisingPro ? [
+    `战力革新！【${pl.name}】升级主战手板为【${newBlade.name}】`,
+    `磨刀霍霍！冲分名将【${pl.name}】完成底板换装【${newBlade.name}】`,
+    `强化相持！【${pl.name}】启用【${newBlade.name}】力求突破前列`
+  ] : [
+    `武器升级！年轻选手【${pl.name}】换装进阶底板【${newBlade.name}】`,
+    `精进手感！【${pl.name}】新赛季选用【${newBlade.name}】优化出球弧线`,
+    `装备进阶！【${pl.name}】完成手板更新【${newBlade.name}】`
+  ]);
+
+  // 2. 多样化正文模板
+  const contentTemplates = [
+    `【器材注册公示】根据国际乒联官方装备最新备案，来自 ${pl.country} 的${rankTag}【${pl.name}】（现世界排名 #${curRank}）已完成主战器材调校，正式更换为【${newBlade.name}】（${tierName}）。\n\n现场技术监测显示，新底板提供了更扎实的持球吃球手感，其综合战力已来到 ${Math.round(computePlayerCombatPower(pl))} 点。`,
+    `【探营速递】在备战新赛季的封闭训练中，【${pl.name}】针对前三板落点控制与中远台底劲进行了专项手板调整，最终敲定列装【${newBlade.name}】。\n\n主管教练表示，这款手板与选手的战术风格契合度极高，期待在下站巡回赛中打出全新竞技状态。`,
+    `【装备评测志】${pl.country} 选手【${pl.name}】近期告别了旧配置，正式换用【${newBlade.name}】。\n\n技术分析师指出，该款底板在击球形变恢复和速度支撑上提升明显，将有助于其在接下来的高强度对抗中抢占先手。`
+  ];
+
+  // 3. 真实多角度球迷热评
+  const fanCommentsPool = [
+    [
+      { author: "器材研究员", text: `换了【${newBlade.name}】吃球更深了，反拉爆冲质量肉眼可见地上升！` },
+      { author: "巡回赛观战团", text: `期待【${pl.name}】新赛季拿这块新武器在正赛打出好成绩！` }
+    ],
+    [
+      { author: "弧圈发烧友", text: `【${brandName}】这款手板支撑力很强，非常适合他的打法。` },
+      { author: "战术分析师", text: `看来是想重点加强近中台的摆速衔接，这波换装很到位。` }
+    ],
+    [
+      { author: "看台球友", text: `装备微调对职业球员影响很大，就看新配置的实战磨合了！` },
+      { author: "名宿评述", text: `底劲更扎实了，关键分变线的时候底气会更足。` }
+    ]
+  ];
+
+  const pickedTitle = titleTemplates[Math.floor(Math.random() * titleTemplates.length)];
+  const pickedContent = contentTemplates[Math.floor(Math.random() * contentTemplates.length)];
+  const pickedComments = fanCommentsPool[Math.floor(Math.random() * fanCommentsPool.length)];
+  const mediaSources = ["乒乓器材装备志", "《桌球王国》探营", "WTT 装备观察哨", "《乒乓世界》特稿", "欧洲器材实验室"];
+
+  return {
+    id: `news_${gameState.player.year}_${gameState.player.week}_gear_${pl.name}_${Date.now()}`,
+    week: gameState.player.week,
+    year: gameState.player.year,
+    category: 'biz',
+    isUser: false,
+    icon: '🏓',
+    source: mediaSources[Math.floor(Math.random() * mediaSources.length)],
+    title: pickedTitle,
+    snippet: `为优化出球质量与战术表现，${pl.name} 完成主战手板调校，正式列装【${newBlade.name}】。`,
+    content: pickedContent,
+    comments: pickedComments
+  };
+}
+
+/* ==================== 3. AI 低概率年度器材更换机制 ==================== */
+function checkAIGearUpgrades() {
+  (gameState.worldRanking || []).forEach((pl, idx) => {
+    if (pl.isUser) return;
+
+    let curRank = idx + 1;
+    let pow = pl.basePow || 60;
+    
+    // 基础年换装概率仅为 8%
+    let switchChance = 0.08;
+
+    // 前排顶尖选手换装概率适度增加
+    if (curRank <= 15 && (!pl.gear || pl.gear.blade === 'b1' || pl.gear.blade === 'b2')) {
+      switchChance = 0.50;
+    } else if (curRank <= 80 && pl.gear && ['b1', 'b2', 'b10', 'b3', 'b44'].includes(pl.gear.blade)) {
+      switchChance = 0.35;
+    }
+
+    if (Math.random() < switchChance) {
+      const oldBladeId = pl.gear?.blade;
+      assignAIGear(pl, curRank);
+      pl.stats = getEffectiveStatsForPlayer(pl);
+
+      const newBlade = (typeof GEAR_DATABASE !== 'undefined' && GEAR_DATABASE.blade) 
+        ? GEAR_DATABASE.blade.find(b => b.id === pl.gear.blade) 
+        : null;
+
+      // 仅在底板确实升级更换时，生成真实的新闻
+      if (newBlade && newBlade.id !== oldBladeId) {
+        const gearNewsItem = createAIGearChangeNews(pl, oldBladeId, newBlade, curRank);
+        if (gearNewsItem) {
+          if (!gameState.newsFeed) gameState.newsFeed = [];
+          gameState.newsFeed.unshift(gearNewsItem);
+        }
+      }
+    }
+  });
+}
+
+/* ==================== 3. AI 低概率年度器材更换机制 ==================== */
+function checkAIGearUpgrades() {
+  (gameState.worldRanking || []).forEach((pl, idx) => {
+    if (pl.isUser) return;
+
+    let curRank = idx + 1;
+    let pow = pl.basePow || 60;
+    
+    // 基础年换装概率仅为 8%
+    let switchChance = 0.08;
+
+    // 前排顶尖选手换装概率适度增加
+    if (curRank <= 15 && (!pl.gear || pl.gear.blade === 'b1' || pl.gear.blade === 'b2')) {
+      switchChance = 0.50;
+    } else if (curRank <= 80 && pl.gear && ['b1', 'b2', 'b10', 'b3', 'b44'].includes(pl.gear.blade)) {
+      switchChance = 0.35;
+    }
+
+    if (Math.random() < switchChance) {
+      const oldBladeId = pl.gear?.blade;
+      assignAIGear(pl, curRank);
+      pl.stats = getEffectiveStatsForPlayer(pl);
+
+      const newBlade = (typeof GEAR_DATABASE !== 'undefined' && GEAR_DATABASE.blade) 
+        ? GEAR_DATABASE.blade.find(b => b.id === pl.gear.blade) 
+        : null;
+
+      // 仅在底板确实升级更换时，生成真实的新闻
+      if (newBlade && newBlade.id !== oldBladeId) {
+        const gearNewsItem = createAIGearChangeNews(pl, oldBladeId, newBlade, curRank);
+        if (gearNewsItem) {
+          if (!gameState.newsFeed) gameState.newsFeed = [];
+          gameState.newsFeed.unshift(gearNewsItem);
+        }
+      }
+    }
+  });
+}

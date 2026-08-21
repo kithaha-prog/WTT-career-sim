@@ -238,7 +238,7 @@ function stepLivePoint() {
   const st = liveMatchState;
   const u = getEffectiveStats();
   const oppRankObj = gameState.worldRanking.find(x => x.name === st.opp.name);
-  const oppStats = oppRankObj?.stats || generateAI12Stats(st.opp.power || 65, oppRankObj?.style);
+  const oppStats = getEffectiveStatsForPlayer(oppRankObj);
 
   const isUserServing = (st.server === 'user');
   const serverStats = isUserServing ? u : oppStats;
@@ -609,6 +609,7 @@ function closeLiveModal() {
   }
 
   finishCurrentRound(userWon, isDoubles);
+  saveGame(false, true); // 👈 比赛打完后强制立刻同步落盘
 }
 
 function simulatePureAIRound() {

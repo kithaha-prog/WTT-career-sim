@@ -382,7 +382,7 @@ function openPlayerProfileModal(playerName) {
     : (p.isUser ? (gameState.player.year - 2026) : (p.debutYear ? Math.max(0, gameState.player.year - p.debutYear) : Math.max(0, (p.age || 16) - 16)));
   document.getElementById('prof-modal-years-pro').innerText = `职业年限: ${yearsProText}${isRetired && yearsProText === '--' ? '' : ' 年'}`;
 
-  let overallVal = p.isUser ? Math.round(computeUserCombatPower()) : Math.round(p.basePow || 60);
+  let overallVal = Math.round(computePlayerCombatPower(p));
   document.getElementById('prof-modal-overall').innerText = overallVal;
 
   let careerWins = p.isUser ? gameState.stats.wins : (p.careerWins || 0);
@@ -842,8 +842,15 @@ function startCurrentWeekTournament() {
     rawList.push({ name: p.name, power: userCombatPow, points: p.points, isUser: true });
   }
 
+  // 无论是单打还是双打，抽取 AI 选手时统一读取装备战力：
   participants.forEach(x => {
-    rawList.push({ name: x.name, power: Math.max(20, (x.basePow || 55) - (x.injuryPenalty || 0)) + Math.random()*8, points: x.points, isUser: false });
+    let realCombatPow = computePlayerCombatPower(x);
+    rawList.push({ 
+      name: x.name, 
+      power: realCombatPow + Math.random() * 4, 
+      points: x.points, 
+      isUser: false 
+    });
   });
 
   let fullDraw = generateSeededBracket(rawList, totalSize);
@@ -1078,14 +1085,22 @@ function calculateRoundPrize(prizeAward, drawSize, roundIdx, phase, isRunnerUp =
   return Math.floor(prizeAward * pPct);
 }
 
-function finishCurrentRound(playerWonRound) {
+function finishCurrentRound(playerWonRound, isDoubles) {
   let rootTour = gameState.currentTournament;
   if (!rootTour) return;
 
   if (rootTour.mode === 'both') {
-    let targetSubTour = (currentActiveBracketTab === 'doubles') ? rootTour.doubles : rootTour.singles;
+    // 👈 优先依据传入的 isDoubles 判断，确保打完单打只推进单打，打完双打只推进双打
+    let targetSubTour;
+    if (isDoubles !== undefined) {
+      targetSubTour = isDoubles ? rootTour.doubles : rootTour.singles;
+    } else {
+      targetSubTour = (currentActiveBracketTab === 'doubles') ? rootTour.doubles : rootTour.singles;
+    }
+
     finishSubTournamentRound(targetSubTour, playerWonRound);
-    if (rootTour.singles.completed && rootTour.doubles.completed) {
+
+    if (rootTour.singles?.completed && rootTour.doubles?.completed) {
       rootTour.completed = true;
     }
   } else {
@@ -1114,6 +1129,7 @@ function triggerRoundAction() {
       return;
     }
 
+    // 寻找当前查看项目（单打或双打）中包含玩家的未赛对局
     let activeMatch = (!curActiveTour.isUserKnockedOut && curActiveTour.rounds[curActiveTour.currentRound])
       ? curActiveTour.rounds[curActiveTour.currentRound].find(m => (m.p1?.isUser || m.p2?.isUser) && !m.winner)
       : null;
@@ -1217,6 +1233,7 @@ function finishSubTournamentRound(tour, playerWonRound) {
   tour.currentRound++;
   let isLastRound = tour.currentRound >= tour.rounds.length;
 
+  // 1. 决赛结算（冠亚军 + 季军战）
   if (isTrueFinal && isLastRound) {
     let finalMatch = roundMatches[0];
     let champ = finalMatch.winner;
@@ -1246,6 +1263,7 @@ function finishSubTournamentRound(tour, playerWonRound) {
       tour.type
     );
 
+    // 奥运铜牌战奖金与积分
     if (tour.bronzeMatch && !tour.bronzeMatch.winner) {
       let bm = tour.bronzeMatch;
       let simBm = simulateMatchScore(bm.p1, bm.p2, 3);
@@ -1256,6 +1274,8 @@ function finishSubTournamentRound(tour, playerWonRound) {
       let bLoser = (bm.winner === bm.p1) ? bm.p2 : bm.p1;
       let bPts = Math.floor(tour.pointsAward * 0.65);
       let fPts = Math.floor(tour.pointsAward * 0.50);
+      let bPrize = calculateRoundPrize(tour.prizeAward, tour.drawSize, tour.rounds.length - 2, 'main', false);
+      let fPrize = calculateRoundPrize(tour.prizeAward, tour.drawSize, tour.rounds.length - 3, 'main', false);
 
       if (isDoubles) {
         let wPair = gameState.doublesRanking?.find(p => p.name === bm.winner.name);
@@ -1263,7 +1283,12 @@ function finishSubTournamentRound(tour, playerWonRound) {
         if (wPair && !wPair.isUserPair) awardDoublesPoints(wPair, bPts);
         if (lPair && !lPair.isUserPair) awardDoublesPoints(lPair, fPts);
         if (bm.winner.isUser) {
+          gameState.player.money += bPrize;
+          gameState.stats.totalPrizeWon = (gameState.stats.totalPrizeWon || 0) + bPrize;
           recordCareerMedal('B', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
+        } else if (bLoser.isUser) {
+          gameState.player.money += fPrize;
+          gameState.stats.totalPrizeWon = (gameState.stats.totalPrizeWon || 0) + fPrize;
         }
       } else {
         let wObj = gameState.worldRanking.find(x => x.name === bm.winner.name);
@@ -1277,11 +1302,17 @@ function finishSubTournamentRound(tour, playerWonRound) {
           awardPoints(lObj, fPts);
         }
         if (bm.winner.isUser) {
+          gameState.player.money += bPrize;
+          gameState.stats.totalPrizeWon = (gameState.stats.totalPrizeWon || 0) + bPrize;
           recordCareerMedal('B', gameState.player.year, tour.week, tour.name, tour.type, "男子单打");
+        } else if (bLoser.isUser) {
+          gameState.player.money += fPrize;
+          gameState.stats.totalPrizeWon = (gameState.stats.totalPrizeWon || 0) + fPrize;
         }
       }
     }
 
+    // 双打决赛结算
     if (isDoubles) {
       let partner = gameState.playerDoubles?.currentPartner;
       let userPair = gameState.doublesRanking?.find(p => p.isUserPair);
@@ -1311,11 +1342,17 @@ function finishSubTournamentRound(tour, playerWonRound) {
         }
       }
 
+      // 👈 双打亚军发放奖金
       if (runnerUp.isUser) {
+        let runnerPrize = calculateRoundPrize(tour.prizeAward, tour.drawSize, tour.currentRound - 1, tour.phase, true);
+        gameState.player.money += runnerPrize;
+        gameState.stats.totalPrizeWon = (gameState.stats.totalPrizeWon || 0) + runnerPrize;
+
         awardDoublesPoints(userPair, runnerUpPts);
         recordCareerMedal(gameState.player.name, 'S', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
         if (partner) recordCareerMedal(partner.name, 'S', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
         tour.isUserKnockedOut = true;
+        showAlert(`🥈 双打荣获亚军：获得 +${runnerUpPts} 双打积分，奖金 +$${runnerPrize.toLocaleString()}！`, "赛事结算", "🥈");
       } else {
         let runnerPair = gameState.doublesRanking?.find(p => p.name === runnerUp.name);
         if (runnerPair) {
@@ -1325,13 +1362,39 @@ function finishSubTournamentRound(tour, playerWonRound) {
           });
         }
       }
-    } else {
+    } 
+    // 单打决赛结算
+    else {
       if (champ.isUser) {
         awardPoints(gameState.worldRanking.find(x => x.isUser), champPts);
         gameState.player.money += (tour.prizeAward || 0);
         gameState.stats.totalPrizeWon = (gameState.stats.totalPrizeWon || 0) + (tour.prizeAward || 0);
         gameState.stats.titles++;
         recordCareerMedal(gameState.player.name, 'G', gameState.player.year, tour.week, tour.name, tour.type, "男子单打");
+        
+        // 👈 同步写入奖杯明细记录库
+        ensureTrophyRecords();
+        let cat = "feeder";
+        if (tour.type === "Olympic") cat = "olympic";
+        else if (tour.type === "WTTC") cat = "wttc";
+        else if (tour.type === "World Cup") cat = "wc";
+        else if (tour.type === "Grand Smash") cat = "smash";
+        else if (tour.type === "Finals") cat = "finals";
+        else if (tour.type === "Champions") cat = "champ";
+        else if (tour.type === "Star Contender") cat = "star";
+        else if (tour.type === "Contender") cat = "contender";
+
+        let exists = gameState.trophyRecords.some(t => t.year === gameState.player.year && t.week === tour.week && t.eventName === tour.name);
+        if (!exists) {
+          gameState.trophyRecords.push({
+            categoryKey: cat,
+            eventName: tour.name,
+            year: gameState.player.year,
+            week: tour.week,
+            points: champPts,
+            prize: tour.prizeAward || 0
+          });
+        }
       } else {
         let champObj = gameState.worldRanking.find(x => x.name === champ.name);
         if (champObj) {
@@ -1340,10 +1403,16 @@ function finishSubTournamentRound(tour, playerWonRound) {
         }
       }
 
+      // 👈 单打亚军发放奖金
       if (runnerUp.isUser) {
+        let runnerPrize = calculateRoundPrize(tour.prizeAward, tour.drawSize, tour.currentRound - 1, tour.phase, true);
+        gameState.player.money += runnerPrize;
+        gameState.stats.totalPrizeWon = (gameState.stats.totalPrizeWon || 0) + runnerPrize;
+
         awardPoints(gameState.worldRanking.find(x => x.isUser), runnerUpPts);
         recordCareerMedal(gameState.player.name, 'S', gameState.player.year, tour.week, tour.name, tour.type, "男子单打");
         tour.isUserKnockedOut = true;
+        showAlert(`🥈 单打荣获亚军：获得 +${runnerUpPts} 单打积分，奖金 +$${runnerPrize.toLocaleString()}！`, "赛事结算", "🥈");
       } else {
         let runnerObj = gameState.worldRanking.find(x => x.name === runnerUp.name);
         if (runnerObj) {
@@ -1361,13 +1430,21 @@ function finishSubTournamentRound(tour, playerWonRound) {
       isDoubles ? "双打" : "单打"
     );
   }
+  // 2. 常规轮次出局（四强/八强/16强/32强/资格赛等）结算并全额发放各轮次奖金
   else if (!playerWonRound && !tour.isUserKnockedOut) {
     if (isSemiFinal && tour.type === 'Olympic') {
       showAlert(`止步半决赛！但奥运会设有【🥉 季军争夺战 (铜牌赛)】，你将出战铜牌赛争夺奥运奖牌！`, "进入铜牌赛", "🥉");
     } else {
       let playedRoundIdx = tour.currentRound - 1;
       let earnedPts = calculateRoundPoints(tour.pointsAward, tour.drawSize, playedRoundIdx, tour.phase);
+      let earnedPrize = calculateRoundPrize(tour.prizeAward, tour.drawSize, playedRoundIdx, tour.phase, false);
       let rTitle = getRoundName(tour.drawSize, playedRoundIdx, tour.phase);
+
+      // 👈 为玩家账户累加对应轮次奖金
+      if (earnedPrize > 0) {
+        gameState.player.money += earnedPrize;
+        gameState.stats.totalPrizeWon = (gameState.stats.totalPrizeWon || 0) + earnedPrize;
+      }
 
       if (isDoubles) {
         const userPair = gameState.doublesRanking?.find(p => p.isUserPair);
@@ -1381,7 +1458,7 @@ function finishSubTournamentRound(tour, playerWonRound) {
         if (rTitle.includes("季军") || rTitle.includes("铜牌") || isSemiFinal) {
           recordCareerMedal('B', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
         }
-        showAlert(`双打比赛止步【${rTitle}】：获得 +${earnedPts} 双打积分！`);
+        showAlert(`双打比赛止步【${rTitle}】：获得 +${earnedPts} 双打积分${earnedPrize > 0 ? `，奖金 +$${earnedPrize.toLocaleString()}` : ''}！`);
       } else {
         awardPoints(gameState.worldRanking.find(x => x.isUser), earnedPts);
         recordRecentMatchForPlayer(gameState.worldRanking.find(x => x.isUser), tour.name, tour.type, rTitle, earnedPts, "单打");
@@ -1389,7 +1466,7 @@ function finishSubTournamentRound(tour, playerWonRound) {
         if (rTitle.includes("季军") || rTitle.includes("铜牌") || isSemiFinal) {
           recordCareerMedal('B', gameState.player.year, tour.week, tour.name, tour.type, "男子单打");
         }
-        showAlert(`单打比赛止步【${rTitle}】：获得 +${earnedPts} 单打积分！`);
+        showAlert(`单打比赛止步【${rTitle}】：获得 +${earnedPts} 单打积分${earnedPrize > 0 ? `，奖金 +$${earnedPrize.toLocaleString()}` : ''}！`);
       }
       tour.isUserKnockedOut = true;
     }
@@ -2452,7 +2529,7 @@ function selectDiscipline(discipline) {
   const totalCost = discipline === 'both' ? Math.round(cost.total * 1.3) : cost.total;
 
   if (p.money < totalCost) {
-    showAlert(`💸 参赛资金不足！前往本站${discipline === 'both' ? '（兼项出战）' : ''}共需 $${totalCost.toLocaleString()}，你当前只有 $${p.money.toLocaleString()}。<br>你可以点击「🔙 返回本周多站赛事列表」选择预算更低的支线赛，或休赛训练。`, "资金短缺", "💵");
+    showAlert(`💸 参赛资金不足！前往本站共需 $${totalCost.toLocaleString()}，你当前只有 $${p.money.toLocaleString()}。`, "资金短缺", "💵");
     return;
   }
 
@@ -2460,15 +2537,33 @@ function selectDiscipline(discipline) {
   checkAndTriggerPlayerInjury(discipline === 'both');
 
   let singlesData, doublesData;
+  const wm = ensureWeekMeta();
+  if (!wm.spectateBrackets) wm.spectateBrackets = {};
+
+  // 🏓 1. 仅单打：优先复用已存在并推演过的双打签表，避免重复发奖和双重记录
   if (discipline === 'singles') {
     singlesData = buildSinglesTournamentData(curEvent);
-    doublesData = buildPureAIDoublesTournamentData(curEvent);
+    if (wm.spectateBrackets[curEvent.id]?.doubles) {
+      doublesData = wm.spectateBrackets[curEvent.id].doubles;
+    } else {
+      doublesData = buildPureAIDoublesTournamentData(curEvent);
+      simulateFullSubTournamentRounds(doublesData, curEvent, true);
+    }
     currentActiveBracketTab = 'singles';
-  } else if (discipline === 'doubles') {
-    singlesData = buildPureAISinglesTournamentData(curEvent);
+  } 
+  // 👥 2. 仅双打：优先复用已存在的单打签表
+  else if (discipline === 'doubles') {
+    if (wm.spectateBrackets[curEvent.id]?.singles) {
+      singlesData = wm.spectateBrackets[curEvent.id].singles;
+    } else {
+      singlesData = buildPureAISinglesTournamentData(curEvent);
+      simulateFullSubTournamentRounds(singlesData, curEvent, false);
+    }
     doublesData = buildDoublesTournamentData(curEvent);
     currentActiveBracketTab = 'doubles';
-  } else {
+  } 
+  // 🔥 3. 兼项出战
+  else {
     singlesData = buildSinglesTournamentData(curEvent);
     doublesData = buildDoublesTournamentData(curEvent);
     currentActiveBracketTab = 'singles';
@@ -2488,7 +2583,6 @@ function selectDiscipline(discipline) {
     completed: false
   };
 
-  const wm = ensureWeekMeta();
   wm.selectedEventId = curEvent.id;
   wm.viewingEventId = curEvent.id;
   wm.explicitSpectateEventId = null;
@@ -2711,10 +2805,9 @@ function buildDoublesTournamentData(curEvent) {
   const pairRank = userPair ? (gameState.doublesRanking.indexOf(userPair) + 1) : 999;
 
   let directCut = curEvent.drawSize <= 16 ? 16 : Math.floor(curEvent.directCut / 2);
-  let qualiCut = Math.floor(curEvent.qualiCut / 2);
 
-  let isUnqualified = pairRank > qualiCut;
-  let isQualifying = !isUnqualified && (pairRank > directCut);
+  // 👈 核心修复：玩家只要报名了双打/兼项，未达直通线则必定进入 4 强资格赛，绝不静默剔除
+  let isQualifying = (pairRank > directCut);
   let totalSize = isQualifying ? 4 : (curEvent.drawSize <= 16 ? 16 : Math.min(32, Math.floor(curEvent.drawSize / 2)));
 
   let pool = (wm.doublesAssignment && wm.doublesAssignment[curEvent.id])
@@ -2723,8 +2816,7 @@ function buildDoublesTournamentData(curEvent) {
 
   let poolCopy = pool.filter(pr => !pr.isUserPair);
   let participants = [];
-  let userInDraw = !isUnqualified;
-  let targetCount = userInDraw ? totalSize - 1 : totalSize;
+  let targetCount = totalSize - 1;
 
   while (participants.length < targetCount && poolCopy.length > 0) {
     let r = Math.floor(Math.random() * poolCopy.length);
@@ -2732,7 +2824,7 @@ function buildDoublesTournamentData(curEvent) {
   }
 
   let rawList = [];
-  if (userInDraw && partner) {
+  if (partner) {
     let combatPow = calculateDoublesPairCombatPower(p, partner, partner.chemistry);
     rawList.push({
       name: `${p.name} / ${partner.name}`,
@@ -2761,7 +2853,7 @@ function buildDoublesTournamentData(curEvent) {
   });
 
   let fullDraw = generateSeededBracket(rawList, totalSize, true);
-  return createBracketRoundsStructure(fullDraw, totalSize, isQualifying ? 'quali' : 'main', curEvent, isUnqualified, true);
+  return createBracketRoundsStructure(fullDraw, totalSize, isQualifying ? 'quali' : 'main', curEvent, false, true);
 }
 
 function buildSinglesTournamentData(curEvent) {
@@ -2792,8 +2884,15 @@ function buildSinglesTournamentData(curEvent) {
   if (userInDraw) {
     rawList.push({ name: p.name, power: computeUserCombatPower(), points: p.points, isUser: true });
   }
+  // 无论是单打还是双打，抽取 AI 选手时统一读取装备战力：
   participants.forEach(x => {
-    rawList.push({ name: x.name, power: (x.basePow || 55) + Math.random() * 8, points: x.points, isUser: false });
+    let realCombatPow = computePlayerCombatPower(x);
+    rawList.push({ 
+      name: x.name, 
+      power: realCombatPow + Math.random() * 4, 
+      points: x.points, 
+      isUser: false 
+    });
   });
 
   let fullDraw = generateSeededBracket(rawList, totalSize);
@@ -2966,7 +3065,10 @@ function switchActiveBracketView(tab) {
   const dBtn = document.getElementById('btn-switch-doubles-bracket');
   if (sBtn) sBtn.classList.toggle('active-gear-type', tab === 'singles');
   if (dBtn) dBtn.classList.toggle('active-gear-type', tab === 'doubles');
+  
+  // 👈 核心修复：切换标签页时同时刷新界面按钮状态与签表
   renderBracket();
+  updateUI();
 }
 
 function accumulateDoublesTrophyStats(type) {

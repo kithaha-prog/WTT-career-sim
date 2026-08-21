@@ -144,7 +144,8 @@ function generateTop300() {
       careerLosses: 0,
       pointsHistory: []
     };
-    pObj.stats = generateAI12Stats(pObj.basePow, pObj.style); // 👈 补充这行
+    pObj.stats = generateAI12Stats(pObj.basePow, pObj.style);
+    assignAIGear(pObj, rankPos); // 👈 补充这行
 
     // 分配过去 12 个月的历史积分记录
     let pastWeek = Math.floor(1 + Math.random() * 45);

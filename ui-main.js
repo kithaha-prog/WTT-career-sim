@@ -450,17 +450,26 @@ function updateUI() {
       if (btnEnter) btnEnter.style.display = "none";
       let t = gameState.currentTournament;
       let isBoth = (t.mode === 'both');
-      let isCompleted = isBoth ? (t.singles?.completed && t.doubles?.completed) : t.completed;
+      let isAllCompleted = isBoth ? (t.singles?.completed && t.doubles?.completed) : t.completed;
 
-      if (isCompleted) {
+      if (isAllCompleted) {
         if (btnSim) btnSim.style.display = "none";
-        if (qMsg) qMsg.innerHTML = `🏆 本站赛事已结束，冠军已经诞生！请推进 1 周继续赛季。`;
+        if (qMsg) qMsg.innerHTML = `🏆 本站赛事（单打与双打）已全部完赛！请推进 1 周继续赛季。`;
       } else {
-        if (btnSim) btnSim.style.display = "inline-block";
         let curSubForBtn = isBoth ? ((currentActiveBracketTab === 'doubles') ? t.doubles : t.singles) : t;
-        let hasUserMatch = Boolean(!curSubForBtn.completed && !curSubForBtn.isUserKnockedOut && curSubForBtn.rounds[curSubForBtn.currentRound]?.some(m => (m.p1?.isUser || m.p2?.isUser) && !m.winner));
-        if (btnSim) btnSim.innerText = hasUserMatch ? "进行本轮对决 ➔" : "推进下一轮比赛 ➔";
-        if (qMsg) qMsg.innerHTML = `🔥 赛事进行中！当前查看：【${curSubForBtn.isDoubles ? '👥 双打' : '🏓 单打'}】第 ${curSubForBtn.currentRound + 1} 轮。`;
+        
+        // 如果当前查看的子项目已经完赛，提示切换另一项
+        if (curSubForBtn && curSubForBtn.completed) {
+          if (btnSim) btnSim.style.display = "none";
+          let otherTabName = (currentActiveBracketTab === 'doubles') ? '🏓 单打' : '👥 双打';
+          if (qMsg) qMsg.innerHTML = `✅ 本站【${curSubForBtn.isDoubles ? '双打' : '单打'}】已完赛并产生冠军！请切换至【${otherTabName}】签表继续出战。`;
+        } else if (curSubForBtn) {
+          // 👈 确保切换到未完赛项目时，按钮必定重新显示
+          if (btnSim) btnSim.style.display = "inline-block";
+          let hasUserMatch = Boolean(!curSubForBtn.completed && !curSubForBtn.isUserKnockedOut && curSubForBtn.rounds[curSubForBtn.currentRound]?.some(m => (m.p1?.isUser || m.p2?.isUser) && !m.winner));
+          if (btnSim) btnSim.innerText = hasUserMatch ? "进行本轮对决 ➔" : "推进下一轮比赛 ➔";
+          if (qMsg) qMsg.innerHTML = `🔥 赛事进行中！当前查看：【${curSubForBtn.isDoubles ? '👥 双打' : '🏓 单打'}】第 ${curSubForBtn.currentRound + 1} 轮。`;
+        }
       }
       renderBracket();
     } else {
@@ -514,6 +523,7 @@ function updateUI() {
 }
 
 /* ==================== 数据页与荣誉柜完整渲染 ==================== */
+/* ==================== 数据页与荣誉柜完整渲染 (修复版) ==================== */
 function renderStatsTab() {
   const isD = (currentStatsViewMode === 'doubles');
   const s = isD ? (gameState.doublesStats || {}) : gameState.stats;
@@ -540,7 +550,7 @@ function renderStatsTab() {
   if (bestRankEl) bestRankEl.innerText = `#${s.bestRank || (isD ? '--' : 999)}`;
   if (titlesTotalEl) titlesTotalEl.innerText = s.titles || 0;
 
-  // 2. 瓷砖统计项
+  // 2. 瓷砖统计项 (修复：正确读取 top10MatchesWon 与 top10MatchesPlayed)
   const streakCurEl = document.getElementById('st-streak-cur');
   const streakBestEl = document.getElementById('st-streak-best');
   const decideRateEl = document.getElementById('st-decide-rate');
@@ -558,30 +568,31 @@ function renderStatsTab() {
   if (decideRateEl) decideRateEl.innerText = decideTotal > 0 ? ((decideWon / decideTotal) * 100).toFixed(1) + "%" : "0.0%";
   if (decideCntEl) decideCntEl.innerText = `${decideWon}/${decideTotal} 场`;
 
-  const top10W = s.top10Wins || 0;
-  const top10L = s.top10Losses || 0;
-  const top10Total = top10W + top10L;
-  if (top10RecordEl) top10RecordEl.innerText = `${top10W}胜 ${top10L}负`;
-  if (top10RateEl) top10RateEl.innerText = `胜率 ${top10Total > 0 ? ((top10W / top10Total) * 100).toFixed(1) + "%" : "0.0%"}`;
+  // 👈 修复：对阵前十战绩正确匹配
+  const top10Played = s.top10MatchesPlayed || 0;
+  const top10Won = s.top10MatchesWon || 0;
+  const top10Lost = Math.max(0, top10Played - top10Won);
+  if (top10RecordEl) top10RecordEl.innerText = `${top10Won}胜 ${top10Lost}负`;
+  if (top10RateEl) top10RateEl.innerText = `胜率 ${top10Played > 0 ? ((top10Won / top10Played) * 100).toFixed(1) + "%" : "0.0%"}`;
 
   if (totalPrizeEl) totalPrizeEl.innerText = `$${(gameState.stats.totalPrizeWon || 0).toLocaleString()}`;
   if (bestAchieveEl) bestAchieveEl.innerText = s.bestAchievement || (s.titles > 0 ? "巡回赛冠军" : "暂无顶级荣誉");
 
-  // 3. 奖杯柜数量统计 (从 trophyRecords 统计或直接从 stats 取值)
+  // 3. 奖杯柜数量统计 (修复：单打直接统计真实记录，彻底消除 0 ?? 覆盖 bug)
   ensureTrophyRecords();
   const records = gameState.trophyRecords || [];
   const countCat = (cat) => records.filter(r => r.categoryKey === cat).length;
 
   const trophyMap = {
-    'st-title-olympic': s.titlesOlympic ?? countCat('olympic'),
-    'st-title-wttc': s.titlesWTTC ?? countCat('wttc'),
-    'st-title-wc': s.titlesWorldCup ?? countCat('wc'),
-    'st-title-smash': s.titlesSmash ?? countCat('smash'),
-    'st-title-finals': s.titlesFinals ?? countCat('finals'),
-    'st-title-champ': s.titlesChamp ?? countCat('champ'),
-    'st-title-star': s.titlesStar ?? countCat('star'),
-    'st-title-contender': s.titlesContender ?? countCat('contender'),
-    'st-title-feeder': s.titlesFeeder ?? countCat('feeder')
+    'st-title-olympic': isD ? (s.titlesOlympic || 0) : countCat('olympic'),
+    'st-title-wttc': isD ? (s.titlesWTTC || 0) : countCat('wttc'),
+    'st-title-wc': isD ? (s.titlesWorldCup || 0) : countCat('wc'),
+    'st-title-smash': isD ? (s.titlesSmash || 0) : countCat('smash'),
+    'st-title-finals': isD ? (s.titlesFinals || 0) : countCat('finals'),
+    'st-title-champ': isD ? (s.titlesChamp || 0) : countCat('champ'),
+    'st-title-star': isD ? (s.titlesStar || 0) : countCat('star'),
+    'st-title-contender': isD ? (s.titlesContender || 0) : countCat('contender'),
+    'st-title-feeder': isD ? (s.titlesFeeder || 0) : countCat('feeder') // 👈 真实返回 4
   };
 
   Object.entries(trophyMap).forEach(([id, val]) => {
@@ -1802,34 +1813,61 @@ function advanceWeek() {
   }
 
   updateUI();
-  saveGame();
+  saveGame(false, true); // 👈 推进周次后强制立刻同步落盘
   showWeekAdvanceToast(p.week, p.year);
 }
 
 let saveGameDebounceTimer = null;
 
-function saveGame(showAlert = false) {
-  if (showAlert) {
-    try {
-      localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', JSON.stringify(gameState));
-      alert('💾 生涯存档已成功保存到本地浏览器！');
-    } catch (e) {
-      console.error(e);
+function saveGame(showAlert = false, forceImmediate = false) {
+  try {
+    // 🛡️ 智能瘦身：在写入前自动剪裁冗余膨胀数据，防止 LocalStorage 爆满
+    if (gameState) {
+      // 1. 新闻流最多只保留最近的 40 条，过期的历史新闻自动丢弃
+      if (Array.isArray(gameState.newsFeed) && gameState.newsFeed.length > 40) {
+        gameState.newsFeed = gameState.newsFeed.slice(0, 40);
+      }
+      // 2. 比赛历史流水最多保留 50 条
+      if (Array.isArray(gameState.matchHistory) && gameState.matchHistory.length > 50) {
+        gameState.matchHistory = gameState.matchHistory.slice(0, 50);
+      }
+      // 3. 清理已失效的临时视窗缓存
+      if (gameState.weekMeta) {
+        gameState.weekMeta.spectateBrackets = {}; 
+      }
     }
-    return;
+
+    const payload = JSON.stringify(gameState);
+
+    if (showAlert || forceImmediate) {
+      if (saveGameDebounceTimer) clearTimeout(saveGameDebounceTimer);
+      localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', payload);
+      if (showAlert) alert('💾 生涯存档已成功保存到本地浏览器！');
+      return;
+    }
+
+    if (saveGameDebounceTimer) clearTimeout(saveGameDebounceTimer);
+    saveGameDebounceTimer = setTimeout(() => {
+      try {
+        localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', payload);
+      } catch (innerErr) {
+        console.error("异步存档写入失败:", innerErr);
+      }
+    }, 200);
+
+  } catch (e) {
+    console.error("LocalStorage 空间已满 (QuotaExceededError):", e);
+    // 极端兜底：如果依然超限，强制执行大瘦身再试一次
+    try {
+      gameState.newsFeed = (gameState.newsFeed || []).slice(0, 15);
+      gameState.matchHistory = (gameState.matchHistory || []).slice(0, 20);
+      localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', JSON.stringify(gameState));
+      if (showAlert) alert('⚠️ 存储空间告急，已为您自动清理历史冗余新闻后成功存档！');
+    } catch (err2) {
+      alert('❌ 存档失败：浏览器本地存储已完全爆满！建议点击系统设置中的「导出存档文件 (.json)」下载备份，然后重置游戏。');
+    }
   }
-
-  // 连续点击时延迟 300ms 批量写入，完全不阻碍主线程动画与渲染
-  if (saveGameDebounceTimer) clearTimeout(saveGameDebounceTimer);
-  saveGameDebounceTimer = setTimeout(() => {
-    try {
-      localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', JSON.stringify(gameState));
-    } catch (e) {
-      console.error(e);
-    }
-  }, 300);
 }
-
 function exportSaveFile() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gameState));
   const downloadAnchor = document.createElement('a');
@@ -2316,3 +2354,13 @@ function switchManualTab(tabKey) {
   }
 }
 
+// 确保在用户刷新页面、关闭标签页或切换页面前，100% 同步强制写入最新存档
+window.addEventListener('beforeunload', () => {
+  try {
+    if (gameState && gameState.player) {
+      localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', JSON.stringify(gameState));
+    }
+  } catch (e) {
+    console.error("刷新前强制存档失败:", e);
+  }
+});

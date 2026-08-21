@@ -3940,7 +3940,6 @@
                 title="点击查看详细战绩档案" 
                 style="font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 2px;"
               >--</h2>
-              <span id="p-years-pro" style="font-size: 0.72rem; color: #64d2ff; font-weight: 600;">0 年球龄</span>
             </div>
             <div style="color: #94a3b8; font-size: 0.78rem; margin-bottom: 5px;" id="p-bio">--</div>
             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
@@ -4669,7 +4668,6 @@
 
 <!-- 选手综合档案弹窗 (完整修复版) -->
 <div id="player-profile-modal" style="display:none; z-index: 3100;">
-  <!-- 修改这里：增加 max-width 与 width，并调整内边距 -->
   <div class="modal-box" style="max-width: 1150px; width: 95%; padding: 32px 36px; max-height: 92vh;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
       <h3 style="color:var(--accent-gold); font-size: 1.25rem;">🏓 选手对战与履历档案</h3>
@@ -4684,7 +4682,6 @@
         <div>
           <h2 id="prof-modal-name" style="color:#fff; margin-bottom:4px;">--</h2>
           <p style="font-size:0.85rem; color:var(--text-dim);" id="prof-modal-sub">-- | --岁 | 世界排名: --</p>
-          <!-- 修改后：将 margin-top 设为 10px 即可往下移开 -->
           <p style="font-size:0.82rem; margin-top: 5px; display: flex; gap: 3px; align-items: center;">
             <span class="badge" id="prof-modal-style">--</span> 
             <span class="badge badge-gold" id="prof-modal-status" onclick="openInjuryHistoryModal(currentViewingProfilePlayer ? currentViewingProfilePlayer.name : '')" style="cursor: pointer; transition: transform 0.15s, filter 0.15s;" onmouseover="this.style.transform='scale(1.05)'; this.style.filter='brightness(1.15)';" onmouseout="this.style.transform='scale(1)'; this.style.filter='brightness(1)';" title="点击查看该选手的历史伤病履历与康复记录">健康</span>
@@ -4693,8 +4690,22 @@
         </div>
       </div>
 
-      <!-- 右侧：综合实力 + 生涯奖牌榜 + 生涯胜率 -->
+      <!-- 右侧：主战器材 + 综合实力 + 生涯奖牌榜 + 生涯胜率 (完整包裹在同一 flex 容器内) -->
       <div style="display: flex; align-items: center; gap: 10px;">
+        <!-- 🏓 主战器材卡片 -->
+        <div 
+          id="prof-modal-gear-box"
+          style="text-align: center; background: rgba(0,0,0,0.25); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--accent-gold); cursor: pointer; transition: transform 0.2s, border-color 0.2s;" 
+          onclick="openPlayerGearModal(currentViewingProfilePlayer ? currentViewingProfilePlayer.name : '')"
+          onmouseover="this.style.transform='scale(1.05)';"
+          onmouseout="this.style.transform='scale(1)';"
+          title="点击查看该选手的底板、胶皮与球鞋器材配置详情"
+        >
+          <div style="font-size: 0.72rem; color: var(--accent-gold); font-weight: bold;">主战器材 🏓</div>
+          <div style="font-size: 0.86rem; font-weight: 800; color: #fff; margin-top: 2px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="prof-modal-gear-blade">--</div>
+          <div style="font-size: 0.68rem; color: var(--accent-cyan); margin-top: 2px;">点击查看详情</div>
+        </div>
+
         <!-- 1. Overall 综合实力 -->
         <div 
           id="prof-modal-overall-box"
@@ -4736,6 +4747,7 @@
       </div>
     </div>
 
+    <!-- 中部：交手记录 -->
     <h4 style="margin: 12px 0 6px 0; color:var(--text);">与我方交手记录 (H2H Record)</h4>
     <div style="background:#151d33; border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:14px;">
       <div class="h2h-split-container">
@@ -4745,6 +4757,7 @@
     </div>
     <div id="prof-h2h-matches-log" style="font-size:0.82rem; color:var(--text-dim); max-height:110px; overflow-y:auto; line-height:1.8; margin-bottom:14px;"></div>
 
+    <!-- 底部：最近 5 站比赛战绩 -->
     <h4 style="margin: 12px 0 6px 0; color:var(--accent-cyan);">最近 5 站比赛战绩 (Recent 5 Tournaments)</h4>
     <table class="recent-matches-table">
       <thead>
@@ -5058,6 +5071,28 @@
     <div style="display:flex; gap:10px;">
       <button class="btn-action" style="flex:1;" onclick="closeNegotiateModal()">考虑一下</button>
       <button class="btn-gold" style="flex:2;" id="btn-submit-negotiate" onclick="submitNegotiation()">正式递交签约申请 ➔</button>
+    </div>
+  </div>
+</div>
+
+<!-- 选手装备详情弹窗 -->
+<div id="player-gear-modal" style="display:none; position:fixed; inset:0; background:rgba(2,4,10,0.88); z-index:3800; justify-content:center; align-items:center; backdrop-filter:blur(12px);">
+  <div class="modal-box" style="max-width: 620px; width: 92%;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">
+      <h3 id="player-gear-modal-title" style="color:var(--accent-gold); font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+        🏓 选手器材配置与属性加成
+      </h3>
+      <button class="btn-action" onclick="closePlayerGearModal()">关闭 ✕</button>
+    </div>
+
+    <!-- 器材卡片展示列表 -->
+    <div id="player-gear-modal-body" style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+      <!-- 动态注入底板、正手、反手、球鞋卡片 -->
+    </div>
+
+    <!-- 属性增益汇总 -->
+    <div id="player-gear-modal-summary" style="background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:12px; padding:12px 16px; font-size:0.82rem; line-height:1.7;">
+      <!-- 动态注入属性加成总览 -->
     </div>
   </div>
 </div>
@@ -6228,18 +6263,40 @@ function formatRoundResult(resultStr) {
 
 function recordRecentMatchForPlayer(pObj, eventName, type, result, pts, discipline = "单打") {
   if (!pObj) return;
-  if (!pObj.recentMatches) pObj.recentMatches = [];
-  pObj.recentMatches.unshift({
-    season: `${gameState.player.year}年`,
-    week: gameState.player.week,
+  if (!Array.isArray(pObj.recentMatches)) pObj.recentMatches = [];
+
+  const curYear = gameState.player.year;
+  const curWeek = gameState.player.week;
+
+  // 严格去重：同一年、同一周、同一站、同一项目的已有记录直接覆盖，不再重复追加
+  const existingIdx = pObj.recentMatches.findIndex(m => 
+    m.season === `${curYear}年` && 
+    m.week === curWeek && 
+    m.event === eventName &&
+    (m.discipline || "单打") === (discipline || "单打")
+  );
+
+  const formattedResult = (typeof formatRoundResult === 'function') ? formatRoundResult(result) : result;
+  const formattedPoints = (typeof pts === 'number') ? `+${pts}` : (String(pts).startsWith('+') ? String(pts) : `+${pts}`);
+
+  const matchRecord = {
+    season: `${curYear}年`,
+    week: curWeek,
     event: eventName,
     type: type,
-    discipline: discipline,
-    result: formatRoundResult(result),
-    points: `+${pts}`
-  });
-  // ❌ 删除或注释掉此行：
-  // if (pObj.recentMatches.length > 5) pObj.recentMatches.pop();
+    result: formattedResult,
+    points: formattedPoints,
+    discipline: discipline || "单打"
+  };
+
+  if (existingIdx >= 0) {
+    pObj.recentMatches[existingIdx] = matchRecord;
+  } else {
+    pObj.recentMatches.unshift(matchRecord);
+    if (pObj.recentMatches.length > 20) {
+      pObj.recentMatches.pop();
+    }
+  }
 }
 
 /* ==================== 统一轮次命名规范 ==================== */
@@ -6277,15 +6334,11 @@ function openPlayerAttributesModal(p) {
   const title = document.getElementById('attr-modal-title');
   const valBox = document.getElementById('attr-modal-values');
 
-  // 获取该选手的 12 维真实属性
-  let stats;
-  if (p.isUser) {
-    stats = getEffectiveStats();
-  } else {
-    stats = p.stats || generateAI12Stats(p.basePow || 60, p.style || "");
-  }
+  // 获取该选手穿戴装备后的 12 维真实属性
+  let stats = getEffectiveStatsForPlayer(p);
+  let overallVal = Math.round(computePlayerCombatPower(p));
 
-  title.innerHTML = `📊 【${p.name}】十二维能力雷达档案 <span style="font-size:0.8rem; color:var(--accent-cyan); margin-left:6px;">(Overall: ${Math.round(p.isUser ? computeUserCombatPower() : (p.basePow || 60))})</span>`;
+  title.innerHTML = `📊 【${p.name}】十二维能力雷达档案 <span style="font-size:0.8rem; color:var(--accent-cyan); margin-left:6px;">(Overall: ${overallVal})</span>`;
 
   // 12 维字段定义与中文映射
   const metaList = [
@@ -6386,6 +6439,124 @@ function drawPlayerAttrRadar(stats) {
   ctx.stroke();
 }
 
+/* ==================== 选手档案与器材详情联动 ==================== */
+
+// 1. 在 openPlayerProfileModal 内部更新装备卡片显示
+function updateProfileModalGearPreview(playerObj) {
+  const gearLabelEl = document.getElementById('prof-modal-gear-blade');
+  if (!gearLabelEl) return;
+
+  let gear = playerObj.isUser ? gameState.player.gear : playerObj.gear;
+  if (!gear) {
+    assignAIGear(playerObj);
+    gear = playerObj.gear;
+  }
+
+  const blade = (GEAR_DATABASE.blade || []).find(b => b.id === gear.blade);
+  gearLabelEl.innerText = blade ? blade.name : "入门纯木底板";
+}
+
+// 2. 打开选手装备详情弹窗
+function openPlayerGearModal(playerName) {
+  if (!playerName) return;
+  const p = (playerName === gameState.player.name) 
+    ? gameState.player 
+    : (gameState.worldRanking.find(x => x.name === playerName) || (gameState.retiredPlayers || []).find(x => x.name === playerName));
+  
+  if (!p) return;
+
+  const modal = document.getElementById('player-gear-modal');
+  const title = document.getElementById('player-gear-modal-title');
+  const body = document.getElementById('player-gear-modal-body');
+  const summary = document.getElementById('player-gear-modal-summary');
+
+  let gear = p.isUser ? gameState.player.gear : p.gear;
+  if (!gear) {
+    assignAIGear(p);
+    gear = p.gear;
+  }
+
+  const blade = GEAR_DATABASE.blade.find(x => x.id === gear.blade) || GEAR_DATABASE.blade[0];
+  const fh = GEAR_DATABASE.fh.find(x => x.id === gear.fh) || GEAR_DATABASE.fh[0];
+  const bh = GEAR_DATABASE.bh.find(x => x.id === gear.bh) || GEAR_DATABASE.bh[0];
+  const shoes = GEAR_DATABASE.shoes.find(x => x.id === gear.shoes) || GEAR_DATABASE.shoes[0];
+
+  title.innerHTML = `🏓 【${p.name}】主战装备配置档案`;
+
+  const tierMap = {
+    1: { name: '入门级', cls: 'badge-feed' },
+    2: { name: '进阶级', cls: 'badge-cont' },
+    3: { name: '专业级', cls: 'badge-star' },
+    4: { name: '国手级', cls: 'badge-gold' }
+  };
+
+  const gearItems = [
+    { slot: '底板 (Blade)', item: blade, icon: '🏓', stats: `速 +${blade.speed || 0} | 旋 +${blade.spin || 0} | 控 +${blade.control || 0}` },
+    { slot: '正手套胶 (Forehand)', item: fh, icon: '🔴', stats: `速 +${fh.speed || 0} | 旋 +${fh.spin || 0} | 控 +${fh.control || 0}` },
+    { slot: '反手套胶 (Backhand)', item: bh, icon: '⚫', stats: `速 +${bh.speed || 0} | 旋 +${bh.spin || 0} | 控 +${bh.control || 0}` },
+    { slot: '战靴 (Footwear)', item: shoes, icon: '👟', stats: `步法 +${shoes.footwork || 0} | 速度 +${shoes.speed || 0}` }
+  ];
+
+  body.innerHTML = gearItems.map(g => {
+    let tInfo = tierMap[g.item.tier] || { name: `T${g.item.tier}`, cls: 'badge' };
+    let brand = extractGearBrand(g.item);
+    return `
+      <div style="background:var(--bg-card-alt); border:1px solid var(--border); border-radius:12px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:2px;">
+            ${g.icon} ${g.slot} · <span style="color:var(--accent-cyan);">${brand}</span>
+          </div>
+          <div style="font-size:0.95rem; font-weight:bold; color:#fff;">
+            ${g.item.name}
+          </div>
+          <div style="font-size:0.75rem; color:var(--accent-gold); margin-top:2px;">
+            ${g.stats}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <span class="badge ${tInfo.cls}">${tInfo.name}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // 属性加成折算
+  const fhBuff = (fh.speed * 0.8 + blade.speed * 0.4).toFixed(1);
+  const bhBuff = (bh.speed * 0.8 + blade.speed * 0.3).toFixed(1);
+  const spinBuff = (fh.spin * 0.5 + bh.spin * 0.3 + blade.spin * 0.3).toFixed(1);
+  const touchBuff = (blade.control * 0.5 + fh.control * 0.3).toFixed(1);
+  const footBuff = shoes.footwork || 0;
+
+  summary.innerHTML = `
+    <div style="font-weight:bold; color:var(--accent-gold); margin-bottom:4px;">⚙️ 装备属性加成折算：</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px 12px; color:#cbd5e1;">
+      <div>💥 正手杀伤增益: <strong style="color:var(--accent);">+${fhBuff}</strong></div>
+      <div>⚡ 反手速度增益: <strong style="color:var(--accent-cyan);">+${bhBuff}</strong></div>
+      <div>🌪️ 击球旋转增益: <strong style="color:var(--accent-gold);">+${spinBuff}</strong></div>
+      <div>🎯 台内控制增益: <strong style="color:#fff;">+${touchBuff}</strong></div>
+      <div>🏃 步法移速增益: <strong style="color:#38bdf8;">+${footBuff}</strong></div>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+}
+
+function closePlayerGearModal() {
+  document.getElementById('player-gear-modal').style.display = 'none';
+}
+
+// 3. 注册点击外部遮罩关闭
+const origInitDismiss = initModalBackdropDismiss;
+initModalBackdropDismiss = function() {
+  if (typeof origInitDismiss === 'function') origInitDismiss();
+  const gearModal = document.getElementById('player-gear-modal');
+  if (gearModal) {
+    gearModal.addEventListener('click', function(e) {
+      if (e.target === this) closePlayerGearModal();
+    });
+  }
+};
+
 function openPlayerProfileModal(playerName) {
   let p = gameState.worldRanking.find(x => x.name === playerName);
   let isRetired = false;
@@ -6441,9 +6612,14 @@ function openPlayerProfileModal(playerName) {
   if (elS) elS.innerText = `🥈 ${sCount}`;
   if (elB) elB.innerText = `🥉 ${bCount}`;
 
+  updateProfileModalGearPreview(p);
+
   // 综合实力展示：若为玩家自身，动态读取六维属性与装备计算出的真实战力
-  let overallVal = p.isUser ? Math.round(computeUserCombatPower()) : Math.round(p.basePow || 60);
+  // ✅ 统一使用计算装备加成后的真实战力函数
+  // 综合实力展示：统一读取叠加器材与 12 维属性后的真实战力
+  let overallVal = Math.round(computePlayerCombatPower(p));
   document.getElementById('prof-modal-overall').innerText = overallVal;
+  
   const trendEl = document.getElementById('prof-modal-overall-trend');
   if (isRetired) {
     trendEl.innerText = "—";
@@ -6462,7 +6638,9 @@ function openPlayerProfileModal(playerName) {
       trendEl.style.color = "var(--text-dim)";
     }
   } else {
-    let trend = p.basePowTrend || 0;
+    // AI 战力变动趋势对比
+    let prevVal = p.prevCombatPower || overallVal;
+    let trend = +(overallVal - prevVal).toFixed(1);
     if (trend > 0.2) {
       trendEl.innerText = `↑ 上升 ${trend.toFixed(1)}`;
       trendEl.style.color = "#4ade80";
@@ -7141,6 +7319,7 @@ function handleSeasonAIAgingAndRetirements() {
         pl.basePow = Math.max(38, Math.min(99, +(oldPow + delta).toFixed(1)));
         pl.basePowTrend = +(pl.basePow - oldPow).toFixed(1);
         pl.stats = generateAI12Stats(pl.basePow, pl.style);
+        checkAIGearUpgrades();
       }
     }
   });
@@ -7419,6 +7598,15 @@ function purchaseOrEquipGear(type, id) {
 // 这样老存档的当前积分不会瞬间清零，而是自然获得完整 52 周窗口后再按新规则滚动过期。
 function migrateLegacyWorldRanking() {
   if (!gameState.worldRanking || !gameState.worldRanking.length) return;
+  gameState.worldRanking.forEach((pl, idx) => {
+    if (!pl.isUser) {
+      if (!pl.gear || !pl.gear.blade) {
+        assignAIGear(pl, idx + 1); // 👈 老存档无装备的 AI 自动从器材库分配
+      }
+      pl.stats = getEffectiveStatsForPlayer(pl);
+    }
+  });
+
   gameState.worldRanking.forEach((pl) => {
     if (typeof pl.careerWins !== 'number') pl.careerWins = 0;
     if (typeof pl.careerLosses !== 'number') pl.careerLosses = 0;
@@ -7431,13 +7619,14 @@ function migrateLegacyWorldRanking() {
   });
 
   // 清理历史残留的同一年同周多次出战单打/双打的异常记录
+  // 自动清洗历史存档中同一年、同周次、同站点的重复战绩
   gameState.worldRanking.forEach(pl => {
     if (pl.recentMatches && Array.isArray(pl.recentMatches)) {
-      let seenWeekDiscipline = new Set();
+      let seen = new Set();
       pl.recentMatches = pl.recentMatches.filter(m => {
-        let key = `${m.season}_${m.week}_${m.discipline || '单打'}`;
-        if (seenWeekDiscipline.has(key)) return false;
-        seenWeekDiscipline.add(key);
+        let key = `${m.season}_${m.week}_${m.event}_${m.discipline || '单打'}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
         return true;
       });
     }
@@ -7541,6 +7730,10 @@ function loadGame(showAlert = false) {
 /* ==================== 全局支持点击遮罩外部关闭弹窗 ==================== */
 function initModalBackdropDismiss() {
   const modalDismissMap = {
+    'player-attributes-modal': closePlayerAttributesModal, // 👈 图一：十二维能力雷达
+    'sponsor-negotiate-modal': closeNegotiateModal,         // 👈 图二：赞助合同谈判
+    'player-gear-modal': closePlayerGearModal,              // 👈 选手装备详情弹窗
+    'discipline-select-modal': closeDisciplineSelectModal,
     'week-podium-modal': closeWeekPodiumModal,
     'game-manual-modal': closeManualModal,
     'trophy-detail-modal': closeTrophyDetailModal, // 👈 添加此项支持框外关闭
