@@ -216,8 +216,26 @@ function openLiveMatch(match) {
     oppGameScores: [],
     userFormJitter: rollMatchDayForm(),
     oppFormJitter: rollMatchDayForm(),
-    games: [ createEmptyGameStats() ]
+    games: [ createEmptyGameStats() ],
+    
+    // 👇 新增战术与暂停相关状态
+    currentTactic: 'neutral',
+    userTimeoutUsed: false,
+    clutchBuffRounds: 0,
+    userStreak: 0,
+    oppStreak: 0
   };
+
+  // 重置暂停按钮 UI
+  const btnTimeout = document.getElementById('btn-live-timeout');
+  if (btnTimeout) {
+    btnTimeout.disabled = false;
+    btnTimeout.innerText = "⏸️ 申请暂停 (1/1)";
+    btnTimeout.style.opacity = "1";
+    btnTimeout.style.cursor = "pointer";
+  }
+  // 默认激活常规相持
+  setLiveTactic('neutral');
 
   matchStatsActiveTab = 'all';
   updateLiveScoreboard();
@@ -244,18 +262,76 @@ function stepLivePoint() {
   const serverStats = isUserServing ? u : oppStats;
   const receiverStats = isUserServing ? oppStats : u;
 
+  // 1. 计算 5 点以内的真实打法克制
+  const userPow = computeUserCombatPower();
+  const oppPow = st.opp.power || (oppRankObj ? computePlayerCombatPower(oppRankObj) : 65);
+  const userAdv = getStyleAdvantage(gameState.player.style, st.opp.style || oppRankObj?.style || '', userPow, oppPow);
+  const oppAdv = getStyleAdvantage(st.opp.style || oppRankObj?.style || '', gameState.player.style, oppPow, userPow);
+
+  // 战力修正：基础战力 + 临场手感 + 打法克制修正
+  let userEffectivePow = userPow + (userAdv.bonus || 0);
+  let oppEffectivePow = oppPow + (oppAdv.bonus || 0);
+
+  // 3. 粉丝助威 Buff：粉丝达到 5w+ 或在国内比赛时，关键分抗压能力增强
+  const playerFans = gameState.player.fans || 0;
+  let fanCrowdBuff = 0;
+  if (playerFans >= 2000000) fanCrowdBuff = 6;       // 巨星主场光环
+  else if (playerFans >= 300000) fanCrowdBuff = 4;
+  else if (playerFans >= 50000) fanCrowdBuff = 2;
+
+  // 2. 读取玩家当前选定的局内战术
+  const tactic = st.currentTactic || 'neutral';
+  let tacticFhBonus = 0;
+  let tacticBhBonus = 0;
+  let tacticTouchBonus = 0;
+  let tacticErrorRate = 0;
+
+  if (tactic === 'smash') {
+    // 搏杀发抢：杀伤+4，但失误率提升
+    tacticFhBonus = 4;
+    tacticErrorRate = 0.08;
+  } else if (tactic === 'control') {
+    // 摆短控网：控制+4，抑制失误
+    tacticTouchBonus = 4;
+  } else if (tactic === 'target_bh') {
+    // 压反调正：反手突击压制
+    tacticBhBonus = 3;
+  } else if (tactic === 'rally') {
+    // 退台对拉：相持防守加成
+    userEffectivePow += 2;
+  }
+
+  // 3. 暂停后的专属临时专注/心理加成
+  let timeoutMentalBuff = 0;
+  if (st.clutchBuffRounds > 0) {
+    timeoutMentalBuff = 12;
+    st.clutchBuffRounds--;
+  }
+
   let userWonPoint = false;
   let commentaryText = "";
   let hudText = "";
   let shotList = [];
 
-  let serveDiff = serverStats.serve - receiverStats.receive;
+  let serveDiff = (serverStats.serve) - (receiverStats.receive);
   let aceProb = Math.max(0.01, Math.min(0.18, 0.02 + serveDiff * 0.002));
   let chiquitaProb = Math.max(0.08, Math.min(0.55, 0.15 + (receiverStats.receive - serverStats.serve) * 0.005));
 
+  // 战术对出招倾向的调控
+  if (tactic === 'control') chiquitaProb *= 0.4; // 摆短有效压制拧拉
+  if (tactic === 'smash' && isUserServing) aceProb *= 1.3;
+
   let roll = Math.random();
 
-  if (roll < aceProb) {
+  // 判定失误或得分（接入战术搏杀的失误风险）
+  if (tactic === 'smash' && Math.random() < tacticErrorRate) {
+    userWonPoint = false;
+    shotList.push({ isUser: isUserServing, action: 'serve', isWinner: false });
+    shotList.push({ isUser: true, action: 'out_error', isWinner: false });
+    hudText = `🔴 ${st.opp.name} 得分 (+1) · 我方搏杀强攻出界`;
+    commentaryText = `<span style="color:var(--accent);">💥 我方战术执行抢攻搏杀，发力过猛回球出界失误！</span>`;
+  }
+  else if (roll < aceProb) {
     userWonPoint = isUserServing;
     shotList.push({ isUser: isUserServing, action: 'serve', isWinner: false });
     shotList.push({ isUser: !isUserServing, action: 'net_error', isWinner: false });
@@ -269,7 +345,7 @@ function stepLivePoint() {
       : `<span style="color:var(--accent);">🌀 ${st.opp.name} 发出高质量隐蔽发球，我方接发下网失误！</span>`;
   } 
   else if (roll < aceProb + chiquitaProb) {
-    let attackValue = receiverStats.bhSpeed * 0.7 + receiverStats.receive * 0.3;
+    let attackValue = receiverStats.bhSpeed * 0.7 + receiverStats.receive * 0.3 + (isUserServing ? 0 : tacticBhBonus);
     let defenseValue = serverStats.rally * 0.7 + serverStats.footwork * 0.3;
     let attackSuccessProb = Math.max(0.20, Math.min(0.85, 0.50 + (attackValue - defenseValue) * 0.015));
 
@@ -286,8 +362,8 @@ function stepLivePoint() {
         ? `<span style="color:var(--accent-blue);">⚡ 我方看准来球台内反手强力拧拉直线绝杀得分！</span>`
         : `<span style="color:var(--accent);">⚡ ${st.opp.name} 迎前反手霸气强拧大角度变线，我方扑救不及失分！</span>`;
     } else {
-      let rallyDiff = (computeUserCombatPower() - (st.opp.power || 65)) + (st.userFormJitter - st.oppFormJitter);
-      userWonPoint = Math.random() < pointWinProb(rallyDiff, { clutch: (u.mental - oppStats.mental) * 0.002 });
+      let rallyDiff = (userEffectivePow - oppEffectivePow) + (st.userFormJitter - st.oppFormJitter);
+      userWonPoint = Math.random() < pointWinProb(rallyDiff, { clutch: (u.mental + timeoutMentalBuff - oppStats.mental) * 0.002 });
 
       let rallyRounds = 4 + Math.floor(Math.random() * 5);
       shotList.push({ isUser: isUserServing, action: 'serve', isWinner: false });
@@ -308,15 +384,16 @@ function stepLivePoint() {
         ? `🟢 我方得分 (+1) · 对手${errorLabel}` 
         : `🔴 ${st.opp.name} 得分 (+1) · 我方${errorLabel}`;
 
+      let counterTag = userAdv.bonus > 0 ? ` (🔥打法压制: ${userAdv.reason})` : '';
       commentaryText = userWonPoint
-        ? `<span style="color:var(--accent-blue);">🛡️ 双方经过 ${rallyRounds} 板高强度对拉，对手变线${errorLabel}失误，我方得分！</span>`
+        ? `<span style="color:var(--accent-blue);">🛡️ 双方经过 ${rallyRounds} 板高强度对拉，对手变线${errorLabel}失误！${counterTag}</span>`
         : `<span style="color:var(--accent);">🛡️ 双方大战 ${rallyRounds} 板中远台拉锯，我方拉球${errorLabel}失误！</span>`;
     }
   } 
   else {
-    let rallyDiff = (computeUserCombatPower() - (st.opp.power || 65)) + (st.userFormJitter - st.oppFormJitter);
+    let rallyDiff = (userEffectivePow - oppEffectivePow) + (st.userFormJitter - st.oppFormJitter);
     let isClutch = st.userPoints >= 9 && st.oppPoints >= 9;
-    userWonPoint = Math.random() < pointWinProb(rallyDiff, { clutch: isClutch ? (u.mental - oppStats.mental) * 0.003 : 0 });
+    userWonPoint = Math.random() < pointWinProb(rallyDiff, { clutch: (isClutch || timeoutMentalBuff > 0) ? (u.mental + timeoutMentalBuff - oppStats.mental) * 0.003 : 0 });
 
     let totalShots = 6 + Math.floor(Math.random() * 7);
     shotList.push({ isUser: isUserServing, action: 'serve', isWinner: false });
@@ -341,8 +418,9 @@ function stepLivePoint() {
       ? `🟢 我方得分 (+1) · 对手相持${errorLabel}` 
       : `🔴 ${st.opp.name} 得分 (+1) · 我方相持${errorLabel}`;
 
+    let counterTag = userAdv.bonus > 0 ? ` (🔥打法克制生效)` : '';
     commentaryText = userWonPoint
-      ? `<span style="color:var(--accent-blue);">🏓 精彩！多达 ${totalShots} 板极限相持攻防，逼迫对方${errorLabel}失误得分！</span>`
+      ? `<span style="color:var(--accent-blue);">🏓 经过多达 ${totalShots} 板极限相持攻防，逼迫对方${errorLabel}失误！${counterTag}</span>`
       : `<span style="color:var(--accent);">🏓 双方连续对拉 ${totalShots} 板，我方退台反拉回球${errorLabel}失误！</span>`;
   }
 
@@ -523,6 +601,12 @@ function closeLiveModal() {
       ds.losses = (ds.losses || 0) + 1;
       ds.currentStreak = 0;
     }
+
+    // 赢球单场圈粉（战胜前十或打进决胜局翻倍）
+    let matchFanGain = Math.floor(150 + Math.random() * 200);
+    if (isVsTop10) matchFanGain += Math.floor(1500 + Math.random() * 2000);
+    if (isDecidingMatch) matchFanGain += 600;
+    addPlayerFans(matchFanGain, "单场胜出");
 
     let isDecidingMatch = (st.userGames + st.oppGames) === (st.maxGames * 2 - 1);
     if (isDecidingMatch) {
@@ -1325,4 +1409,66 @@ function openTrophyDetailModal(catKey) {
 
 function closeTrophyDetailModal() {
   document.getElementById('trophy-detail-modal').style.display = 'none';
+}
+
+// 切换当前局内战术
+function setLiveTactic(tacticKey) {
+  if (!liveMatchState) return;
+  liveMatchState.currentTactic = tacticKey;
+
+  // 更新按钮高亮
+  const tacticButtons = ['neutral', 'smash', 'control', 'target_bh', 'rally'];
+  tacticButtons.forEach(key => {
+    const btn = document.getElementById(`tac-${key}`);
+    if (btn) btn.classList.toggle('active', key === tacticKey);
+  });
+
+  const tacticNames = {
+    neutral: "⚪ 常规相持",
+    smash: "💥 搏杀发抢（前三板强攻，失误率略升）",
+    control: "🎯 摆短控网（严控台内，抑制对手拧拉）",
+    target_bh: "⚡ 压反调正（锁反手突正手，调动对手步法）",
+    rally: "🛡️ 退台对拉（主打多拍周旋与旋转消耗）"
+  };
+
+  const feed = document.getElementById('live-commentary');
+  if (feed) {
+    feed.innerHTML = `<div style="color:var(--accent-cyan); font-size:0.8rem;">📋 战术指令调整为：【${tacticNames[tacticKey] || tacticKey}】</div>` + feed.innerHTML;
+  }
+}
+
+// 玩家主动触发暂停
+function triggerLiveTimeout() {
+  if (!liveMatchState || liveMatchState.isFinished) return;
+  if (liveMatchState.userTimeoutUsed) {
+    showAlert("本场比赛你的暂停机会已使用！(每场限 1 次)", "暂停提示", "⚠️");
+    return;
+  }
+
+  liveMatchState.userTimeoutUsed = true;
+  // 1. 打断对手的连续得分势头
+  liveMatchState.oppStreak = 0;
+  // 2. 给予接下来 2 分的回合临时心理加成与专注度
+  liveMatchState.clutchBuffRounds = 2;
+
+  // 3. 恢复少量体能与士气
+  if (gameState.player) {
+    gameState.player.stamina = Math.min(100, gameState.player.stamina + 3);
+  }
+
+  // 4. 更新按钮状态
+  const btnTimeout = document.getElementById('btn-live-timeout');
+  if (btnTimeout) {
+    btnTimeout.disabled = true;
+    btnTimeout.innerText = "⏸️ 暂停已使用";
+    btnTimeout.style.opacity = "0.5";
+    btnTimeout.style.cursor = "not-allowed";
+  }
+
+  const feed = document.getElementById('live-commentary');
+  if (feed) {
+    feed.innerHTML = `<div class="highlight" style="color:var(--accent-gold); font-weight:bold; font-size:0.92rem;">
+      ⏸️ 我方申请暂停！主教练正在场边做关键技战术复盘与心理疏导（对手气势被打断，接下来2分获得战术专注加成）！
+    </div>` + feed.innerHTML;
+  }
 }

@@ -186,6 +186,16 @@ function updateUI() {
     animateMoneyCount(p.money);
   }
 
+  // 刷新顶栏粉丝数与悬浮提示（完整数字，悬浮展示声望阶位）
+  const topFansEl = document.getElementById('top-p-fans');
+  const topFansBadge = document.getElementById('top-fans-badge');
+  if (topFansEl && topFansBadge) {
+    const fans = p.fans || 200;
+    const tier = getPlayerFanTier(fans);
+    topFansEl.innerText = fans.toLocaleString();
+    topFansBadge.title = `${tier.name} · ${fans.toLocaleString()} 粉丝\n特权：${tier.desc}`;
+  }
+
   // 2. 推进 1 周按钮状态
   let advCheck = checkCanAdvanceWeek();
   let btnAdvance = document.getElementById('btn-advance-week');
@@ -214,6 +224,15 @@ function updateUI() {
     const pBioEl = document.getElementById('p-bio');
     const pStyleEl = document.getElementById('p-style');
     const pHandEl = document.getElementById('p-hand');
+    // 渲染粉丝数与声望阶位
+    const fansBadge = document.getElementById('p-fans-badge');
+    if (fansBadge) {
+      const fans = p.fans || 0;
+      const tier = getPlayerFanTier(fans);
+      fansBadge.className = `badge ${tier.badge}`;
+      fansBadge.innerHTML = `👥 ${formatFanCount(fans)} 粉丝 · ${tier.name.split(' ')[1] || tier.name}`;
+      fansBadge.title = `粉丝总数: ${fans.toLocaleString()} 人\n声望特权: ${tier.perk || tier.desc}`;
+    }
     const pPointsEl = document.getElementById('p-points');
     const pCurrentDateEl = document.getElementById('p-current-date');
     const singleRankEl = document.getElementById('p-world-rank');
@@ -1540,6 +1559,11 @@ function initPlayerCreation() {
   gameState.player.age = parseInt(document.getElementById('inp-age').value) || 16;
   gameState.player.hand = document.getElementById('inp-hand-side').value;
   gameState.player.grip = document.getElementById('inp-grip').value;
+  gameState.player.fans = 200;
+  gameState.player.fanHistory = [];
+  gameState.player.moneyHistory = [];
+  recordFanHistoryPoint();
+  recordMoneyHistoryPoint();
   gameState.player.style = document.getElementById('inp-style-type').value;
 
   document.getElementById('create-modal').style.display = 'none';
@@ -1695,6 +1719,24 @@ function advanceWeek() {
     }
   }
 
+  // 粉丝周边特注与肖像权每周分红
+  const playerFans = p.fans || 200;
+  if (playerFans >= 1000) {
+    let royaltyIncome = Math.floor(playerFans * 0.0015); // 每1000粉丝带来 $1.5/周周边分红
+    if (royaltyIncome > 0) {
+      p.money += royaltyIncome;
+    }
+  }
+
+  // 伤停未参赛周次，粉丝活跃度自然微量衰减（0.3%）
+  if (!playedThisWeek && playerFans > 10000) {
+    addPlayerFans(-Math.floor(playerFans * 0.003), "休赛自然回落");
+  }
+
+  // 记录粉丝与资金点位
+  recordFanHistoryPoint();
+  recordMoneyHistoryPoint();
+
   // 3. 赞助周薪结算
   if (typeof ensurePlayerSponsors === 'function') {
     ensurePlayerSponsors();
@@ -1817,24 +1859,102 @@ function advanceWeek() {
   showWeekAdvanceToast(p.week, p.year);
 }
 
+/* ==================== 智能深度瘦身引擎 (防止长时间游玩超出 5MB 限制) ==================== */
+function pruneGameStateForStorage(state) {
+  if (!state) return;
+
+  const curYear = state.player?.year || 2026;
+  const curWeek = state.player?.week || 1;
+
+  // 1. 清理临时视窗与观战签表缓存（不需要存入硬盘）
+  if (state.weekMeta) {
+    state.weekMeta.spectateBrackets = {};
+  }
+
+  // 2. 资讯流与比赛历史流水只保留最新记录
+  if (Array.isArray(state.newsFeed)) {
+    state.newsFeed = state.newsFeed.slice(0, 30);
+  }
+  if (Array.isArray(state.matchHistory)) {
+    state.matchHistory = state.matchHistory.slice(0, 40);
+  }
+
+  // 3. 500 位 AI 选手的近期战绩精简：AI 只保留最近 5 场（玩家本人保留 20 场）
+  if (Array.isArray(state.worldRanking)) {
+    state.worldRanking.forEach(pl => {
+      if (!pl.isUser && Array.isArray(pl.recentMatches)) {
+        pl.recentMatches = pl.recentMatches.slice(0, 5);
+      }
+    });
+  }
+
+  // 4. 退役选手名人堂瘦身：退役名将只保留核心奖牌与关键履历，裁减多余近期战绩
+  if (Array.isArray(state.retiredPlayers)) {
+    state.retiredPlayers.forEach(rp => {
+      if (Array.isArray(rp.recentMatches)) {
+        rp.recentMatches = rp.recentMatches.slice(0, 3);
+      }
+    });
+    // 最多保留历史声望最高的 120 位退役名将
+    if (state.retiredPlayers.length > 120) {
+      state.retiredPlayers = state.retiredPlayers.slice(0, 120);
+    }
+  }
+
+  // 5. 赛历领奖台 (tournamentPodiums) 裁剪：
+  // 只保留最近 2 年（104 周）内的详细领奖台数据，更早的历史奖牌已永久保存在 careerMedals 中
+  if (state.tournamentPodiums) {
+    const minKeepYear = curYear - 2;
+    for (let key in state.tournamentPodiums) {
+      let year = parseInt(key.split('_')[0]);
+      if (year < minKeepYear) {
+        delete state.tournamentPodiums[key];
+      }
+    }
+  }
+
+  // 6. H2H 对战流水瘦身：每位对手保留总胜负统计，详细比赛流水仅保留最近 8 场
+  if (state.h2hData) {
+    for (let opp in state.h2hData) {
+      if (Array.isArray(state.h2hData[opp].matches) && state.h2hData[opp].matches.length > 8) {
+        state.h2hData[opp].matches = state.h2hData[opp].matches.slice(0, 8);
+      }
+    }
+  }
+
+  // 7. 历史世界排名曲线点位抽样稀释（超过 2 年的历史数据隔周稀疏化存储）
+  const downsampleRankHistory = (hist) => {
+    if (!Array.isArray(hist) || hist.length <= 120) return hist;
+    // 保留最近 52 周完整数据，52 周之前的历史每 4 周保留 1 个采样点
+    const recent52 = hist.slice(-52);
+    const older = hist.slice(0, -52);
+    const sampledOlder = older.filter((_, idx) => idx % 4 === 0);
+    return [...sampledOlder, ...recent52];
+  };
+
+  if (state.player?.fanHistory) {
+    state.player.fanHistory = downsampleRankHistory(state.player.fanHistory);
+  }
+  if (state.player?.moneyHistory) {
+    state.player.moneyHistory = downsampleRankHistory(state.player.moneyHistory);
+  }
+
+  if (state.player?.rankHistory) {
+    state.player.rankHistory = downsampleRankHistory(state.player.rankHistory);
+  }
+  if (state.playerDoubles?.rankHistory) {
+    state.playerDoubles.rankHistory = downsampleRankHistory(state.playerDoubles.rankHistory);
+  }
+}
+
+/* ==================== 强化版安全存档函数 ==================== */
 let saveGameDebounceTimer = null;
 
 function saveGame(showAlert = false, forceImmediate = false) {
   try {
-    // 🛡️ 智能瘦身：在写入前自动剪裁冗余膨胀数据，防止 LocalStorage 爆满
     if (gameState) {
-      // 1. 新闻流最多只保留最近的 40 条，过期的历史新闻自动丢弃
-      if (Array.isArray(gameState.newsFeed) && gameState.newsFeed.length > 40) {
-        gameState.newsFeed = gameState.newsFeed.slice(0, 40);
-      }
-      // 2. 比赛历史流水最多保留 50 条
-      if (Array.isArray(gameState.matchHistory) && gameState.matchHistory.length > 50) {
-        gameState.matchHistory = gameState.matchHistory.slice(0, 50);
-      }
-      // 3. 清理已失效的临时视窗缓存
-      if (gameState.weekMeta) {
-        gameState.weekMeta.spectateBrackets = {}; 
-      }
+      // 执行深度瘦身
+      pruneGameStateForStorage(gameState);
     }
 
     const payload = JSON.stringify(gameState);
@@ -1851,23 +1971,38 @@ function saveGame(showAlert = false, forceImmediate = false) {
       try {
         localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', payload);
       } catch (innerErr) {
-        console.error("异步存档写入失败:", innerErr);
+        console.error("异步存档写入失败，尝试强制极限瘦身:", innerErr);
+        // 极限兜底：仅保留当季数据
+        if (gameState) {
+          gameState.newsFeed = (gameState.newsFeed || []).slice(0, 10);
+          gameState.matchHistory = (gameState.matchHistory || []).slice(0, 15);
+          localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', JSON.stringify(gameState));
+        }
       }
     }, 200);
 
   } catch (e) {
-    console.error("LocalStorage 空间已满 (QuotaExceededError):", e);
-    // 极端兜底：如果依然超限，强制执行大瘦身再试一次
+    console.error("LocalStorage 异常:", e);
     try {
-      gameState.newsFeed = (gameState.newsFeed || []).slice(0, 15);
-      gameState.matchHistory = (gameState.matchHistory || []).slice(0, 20);
-      localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', JSON.stringify(gameState));
-      if (showAlert) alert('⚠️ 存储空间告急，已为您自动清理历史冗余新闻后成功存档！');
+      // 极限救援逻辑
+      if (gameState) {
+        gameState.newsFeed = [];
+        gameState.matchHistory = (gameState.matchHistory || []).slice(0, 10);
+        if (gameState.tournamentPodiums) {
+          const keepYear = (gameState.player?.year || 2026) - 1;
+          for (let k in gameState.tournamentPodiums) {
+            if (parseInt(k.split('_')[0]) < keepYear) delete gameState.tournamentPodiums[k];
+          }
+        }
+        localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', JSON.stringify(gameState));
+        if (showAlert) alert('⚠️ 存储空间已自动优化并成功完成存档！');
+      }
     } catch (err2) {
-      alert('❌ 存档失败：浏览器本地存储已完全爆满！建议点击系统设置中的「导出存档文件 (.json)」下载备份，然后重置游戏。');
+      alert('❌ 存档失败：本地空间严重超限，请前往「系统设置」导出存档 (.json) 进行备份。');
     }
   }
 }
+
 function exportSaveFile() {
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gameState));
   const downloadAnchor = document.createElement('a');
@@ -1919,6 +2054,9 @@ function importSaveFile(event) {
   fileReader.readAsText(event.target.files[0]);
 }
 
+/* ==================== 修复后的重置与防回写逻辑 ==================== */
+let isResettingGame = false; // 👈 标记当前是否正在执行重置
+
 function resetGame() {
   showCustomConfirm({
     icon: '🔄',
@@ -1927,11 +2065,28 @@ function resetGame() {
     okText: '确认重置',
     okColor: '#ef4444',
     onConfirm: () => {
-      localStorage.removeItem('TT_SIM_FINAL_SAVE_2026_PRO');
-      location.reload();
+      isResettingGame = true; // 1. 锁死重置标记，禁止 beforeunload 写回
+      if (saveGameDebounceTimer) clearTimeout(saveGameDebounceTimer); // 2. 清除防抖计时器
+      
+      localStorage.removeItem('TT_SIM_FINAL_SAVE_2026_PRO'); // 3. 删除存档
+      gameState = null; // 4. 清空内存对象
+      
+      location.reload(); // 5. 刷新页面，重新弹出创角界面
     }
   });
 }
+
+// 页面刷新/关闭前的自动保存（增加重置保护拦截）
+window.addEventListener('beforeunload', () => {
+  if (isResettingGame) return; // 👈 如果正在重置，直接拦截退出，绝不再写回旧存档！
+  try {
+    if (gameState && gameState.player) {
+      localStorage.setItem('TT_SIM_FINAL_SAVE_2026_PRO', JSON.stringify(gameState));
+    }
+  } catch (e) {
+    console.error("刷新前强制存档失败:", e);
+  }
+});
 
 /* ==================== 11. 周训练与赛季推进 (含属性自愈) ==================== */
 function allowDrop(ev) { ev.preventDefault(); ev.currentTarget.classList.add('drag-over'); }
@@ -2364,3 +2519,168 @@ window.addEventListener('beforeunload', () => {
     console.error("刷新前强制存档失败:", e);
   }
 });
+
+/* ==================== 粉丝与资金历史起伏图表引擎 ==================== */
+let currentFanHistoryPeriod = '10w';
+let currentMoneyHistoryPeriod = '10w';
+
+// 1. 粉丝弹窗
+function openFanHistoryModal() {
+  if (!gameState.player.fanHistory || gameState.player.fanHistory.length === 0) {
+    recordFanHistoryPoint();
+  }
+  document.getElementById('fan-history-modal').style.display = 'flex';
+  renderFanHistoryChart(currentFanHistoryPeriod);
+}
+
+function closeFanHistoryModal() {
+  document.getElementById('fan-history-modal').style.display = 'none';
+  hideRankTooltip();
+}
+
+function renderFanHistoryChart(period) {
+  currentFanHistoryPeriod = period;
+  document.querySelectorAll('.fan-period-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-period') === period);
+  });
+
+  const hist = (gameState.player.fanHistory || []).slice().sort((a, b) => a.abs - b.abs);
+  const container = document.getElementById('fan-history-chart-container');
+  const summaryBox = document.getElementById('fan-history-summary');
+  if (!container || !summaryBox) return;
+
+  if (hist.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-dim);">暂无粉丝历史数据</div>`;
+    return;
+  }
+
+  const currentAbs = hist[hist.length - 1].abs;
+  const RANGE_WEEKS = { '10w': 10, '6m': 26, '5y': 260, 'career': Infinity };
+  const rangeWeeks = RANGE_WEEKS[period] !== undefined ? RANGE_WEEKS[period] : 10;
+
+  let filtered = period === 'career' ? hist : hist.filter(h => (currentAbs - h.abs) <= rangeWeeks);
+  if (filtered.length <= 1 && hist.length > 1) filtered = hist.slice(-2);
+
+  const curVal = hist[hist.length - 1].fans;
+  const maxValEver = Math.max(...hist.map(h => h.fans));
+  const tier = getPlayerFanTier(curVal);
+  const startVal = filtered[0].fans;
+  const delta = curVal - startVal;
+
+  summaryBox.innerHTML = `
+    <div>当前粉丝: <strong style="color:#c084fc;">${curVal.toLocaleString()}</strong></div>
+    <div>声望阶位: <strong style="color:var(--accent-gold);">${tier.name}</strong></div>
+    <div>本区间变化: <strong style="color:${delta >= 0 ? '#4ade80' : '#f87171'};">${delta >= 0 ? '▲ +' : '▼ '}${Math.abs(delta).toLocaleString()}</strong></div>
+  `;
+
+  container.innerHTML = buildValueHistorySVG(filtered, 'fans', '#c084fc', '#a855f7');
+}
+
+// 2. 资金弹窗
+function openMoneyHistoryModal() {
+  if (!gameState.player.moneyHistory || gameState.player.moneyHistory.length === 0) {
+    recordMoneyHistoryPoint();
+  }
+  document.getElementById('money-history-modal').style.display = 'flex';
+  renderMoneyHistoryChart(currentMoneyHistoryPeriod);
+}
+
+function closeMoneyHistoryModal() {
+  document.getElementById('money-history-modal').style.display = 'none';
+  hideRankTooltip();
+}
+
+function renderMoneyHistoryChart(period) {
+  currentMoneyHistoryPeriod = period;
+  document.querySelectorAll('.money-period-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-period') === period);
+  });
+
+  const hist = (gameState.player.moneyHistory || []).slice().sort((a, b) => a.abs - b.abs);
+  const container = document.getElementById('money-history-chart-container');
+  const summaryBox = document.getElementById('money-history-summary');
+  if (!container || !summaryBox) return;
+
+  if (hist.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--text-dim);">暂无资金历史数据</div>`;
+    return;
+  }
+
+  const currentAbs = hist[hist.length - 1].abs;
+  const RANGE_WEEKS = { '10w': 10, '6m': 26, '5y': 260, 'career': Infinity };
+  const rangeWeeks = RANGE_WEEKS[period] !== undefined ? RANGE_WEEKS[period] : 10;
+
+  let filtered = period === 'career' ? hist : hist.filter(h => (currentAbs - h.abs) <= rangeWeeks);
+  if (filtered.length <= 1 && hist.length > 1) filtered = hist.slice(-2);
+
+  const curVal = hist[hist.length - 1].money;
+  const maxValEver = Math.max(...hist.map(h => h.money));
+  const startVal = filtered[0].money;
+  const delta = curVal - startVal;
+
+  summaryBox.innerHTML = `
+    <div>当前资金: <strong style="color:var(--accent-gold);">$${curVal.toLocaleString()}</strong></div>
+    <div>历史最高资产: <strong style="color:var(--accent-cyan);">$${maxValEver.toLocaleString()}</strong></div>
+    <div>本区间收支: <strong style="color:${delta >= 0 ? '#4ade80' : '#f87171'};">${delta >= 0 ? '▲ +$' : '▼ -$'}${Math.abs(delta).toLocaleString()}</strong></div>
+  `;
+
+  container.innerHTML = buildValueHistorySVG(filtered, 'money', 'var(--accent-gold)', '#ffb703');
+}
+
+// 3. 通用高精度 SVG 折线图生成器（数值越大曲线越高）
+function buildValueHistorySVG(points, valueKey, strokeColor, dotColor) {
+  const width = 660, height = 260;
+  const pad = { left: 60, right: 20, top: 20, bottom: 34 };
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+
+  let values = points.map(pt => pt[valueKey] || 0);
+  let minVal = Math.min(...values);
+  let maxVal = Math.max(...values);
+  if (minVal === maxVal) { minVal = Math.max(0, minVal - 100); maxVal = maxVal + 100; }
+  let rangePad = Math.max(10, Math.round((maxVal - minVal) * 0.1));
+  minVal = Math.max(0, minVal - rangePad);
+  maxVal = maxVal + rangePad;
+
+  const xFor = (i) => points.length === 1 ? pad.left + plotW / 2 : pad.left + (i / (points.length - 1)) * plotW;
+  // 注意：数值越大 Y 坐标越小（越靠顶部）
+  const yFor = (val) => pad.top + plotH - ((val - minVal) / (maxVal - minVal)) * plotH;
+
+  let gridLines = '', yLabels = '';
+  const TICKS = 5;
+  for (let t = 0; t <= TICKS; t++) {
+    let val = Math.round(minVal + (t / TICKS) * (maxVal - minVal));
+    let y = pad.top + plotH - (t / TICKS) * plotH;
+    gridLines += `<line x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+    let labelText = valueKey === 'money' ? `$${val >= 10000 ? (val/1000).toFixed(0)+'k' : val}` : (val >= 10000 ? (val/10000).toFixed(1)+'w' : val);
+    yLabels += `<text x="${pad.left - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--text-dim)">${labelText}</text>`;
+  }
+
+  let pathD = points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i).toFixed(1)} ${yFor(pt[valueKey]).toFixed(1)}`).join(' ');
+
+  let xLabelIdxs = points.length === 1 ? [0] : [0, Math.floor((points.length - 1) / 2), points.length - 1];
+  let xLabels = [...new Set(xLabelIdxs)].map(i => {
+    let pt = points[i];
+    return `<text x="${xFor(i).toFixed(1)}" y="${height - pad.bottom + 20}" text-anchor="middle" font-size="11" fill="var(--text-dim)">${pt.year}年W${pt.week}</text>`;
+  }).join('');
+
+  let dots = points.map((pt, i) => {
+    let x = xFor(i).toFixed(1), y = yFor(pt[valueKey]).toFixed(1);
+    let valStr = valueKey === 'money' ? `$${pt.money.toLocaleString()}` : `${pt.fans.toLocaleString()} 粉丝`;
+    let label = `${pt.year}年 第${pt.week}周 · ${valStr}`;
+    return `<circle class="rank-history-dot" cx="${x}" cy="${y}" r="3.5" fill="${dotColor}" stroke="#0a0e18" stroke-width="1.5"
+      onmouseenter="showRankTooltip(event, '${valStr}', '${pt.year}年第${pt.week}周')" onmousemove="showRankTooltip(event, '${valStr}', '${pt.year}年第${pt.week}周')" onmouseleave="hideRankTooltip()"></circle>`;
+  }).join('');
+
+  return `
+    <svg viewBox="0 0 ${width} ${height}" style="width:100%; height:auto; min-width:480px; display:block;">
+      ${gridLines}
+      <line x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${height - pad.bottom}" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      <line x1="${pad.left}" y1="${height - pad.bottom}" x2="${width - pad.right}" y2="${height - pad.bottom}" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+      ${yLabels}
+      ${xLabels}
+      <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+    </svg>
+  `;
+}

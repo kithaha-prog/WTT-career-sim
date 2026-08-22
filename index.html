@@ -226,6 +226,7 @@
   }
 
   /* 1. 金币资金展示胶囊 */
+  /* 1. 金币资金展示胶囊 (增加过渡与悬浮金色光晕动画) */
   .header-gold-pill {
     position: relative;
     display: flex;
@@ -236,6 +237,15 @@
     border-radius: 999px;
     padding: 5px 14px;
     box-shadow: inset 0 1px 0 rgba(255, 183, 3, 0.15), 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* 悬浮微升与金色流光 */
+  .header-gold-pill:hover {
+    background: rgba(38, 30, 16, 0.95);
+    border-color: rgba(255, 183, 3, 0.7);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(255, 183, 3, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   }
 
   .header-gold-pill .coin-icon {
@@ -507,26 +517,62 @@
     transition: width 0.4s ease;
   }
 
+  /* 赞助商全览自适应网格（一页完整展示所有品牌，取消死锁高度与滚动限制） */
   #sponsors-container {
     display: grid;
-    grid-template-rows: repeat(2, 64px); /* 固定两排，每排 64px 容纳信息 */
-    grid-auto-flow: column;              /* 自动横向延伸 */
-    grid-auto-columns: minmax(250px, 280px);
-    gap: 10px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 4px 2px 8px 2px;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 8px;
+    max-height: none !important; /* 解除高度限制，完全平铺 */
+    overflow: visible !important;
+    padding: 2px;
+  } 
+
+  /* 器材库：改用内部自适应多列纵向网格 */
+  /* 器材库全览自适应网格 (解除死锁高度，固定 3 排展示，无需长距离滚动) */
+  .gear-list-carousel {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+    gap: 8px;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 2px;
+    min-height: 240px;
   }
+
+  /* 紧凑精致型器材卡片 */
+  .gear-card-compact {
+    background: linear-gradient(180deg, rgba(22, 31, 52, 0.65), rgba(12, 17, 30, 0.8));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    height: 105px;
+    box-sizing: border-box;
+  }
+  .gear-card-compact:hover {
+    border-color: rgba(34, 211, 238, 0.5);
+    transform: translateY(-1px);
+  }
+  .gear-card-compact.equipped {
+    border-color: var(--accent-gold);
+    background: linear-gradient(180deg, rgba(50, 38, 12, 0.6), rgba(25, 18, 6, 0.8));
+  }
+
+/* 紧凑精致型赞助商卡片 (高度 48px) */
   .sponsor-card-mini {
     background: linear-gradient(180deg, rgba(22, 31, 52, 0.85) 0%, rgba(12, 17, 30, 0.95) 100%);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 8px 12px;
+    border-radius: 8px;
+    padding: 6px 10px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 10px;
-    height: 64px;
+    gap: 6px;
+    height: 48px;
     box-sizing: border-box;
     transition: border-color 0.2s, transform 0.2s;
   }
@@ -537,10 +583,10 @@
   .sponsor-card-mini.signed {
     border-color: var(--accent-gold);
     background: linear-gradient(180deg, rgba(55, 42, 14, 0.75), rgba(28, 20, 8, 0.9));
-    box-shadow: 0 0 12px rgba(255, 183, 3, 0.22);
+    box-shadow: 0 0 10px rgba(255, 183, 3, 0.25);
   }
   .sponsor-mini-title {
-    font-size: 0.86rem;
+    font-size: 0.82rem;
     font-weight: 700;
     color: #fff;
     white-space: nowrap;
@@ -548,19 +594,29 @@
     text-overflow: ellipsis;
   }
   .sponsor-mini-desc {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: var(--text-dim);
-    margin-top: 2px;
+    margin-top: 1px;
     white-space: nowrap;
   }
 
+  /* 品牌筛选栏：开启横向平滑滚动 */
   .gear-filter-bar {
     display: flex;
     gap: 6px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
     padding-bottom: 4px;
+    scrollbar-width: none; /* 隐藏原生滚动条 */
+    -webkit-overflow-scrolling: touch;
   }
+  .gear-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 胶囊按钮：禁止被弹性盒挤压变形 */
   .gear-filter-btn {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border);
@@ -570,6 +626,7 @@
     font-size: 0.75rem;
     cursor: pointer;
     white-space: nowrap;
+    flex-shrink: 0; /* 👈 核心：保证每个按钮保持完整宽度 */
     transition: all 0.2s;
   }
   .gear-filter-btn:hover {
@@ -582,39 +639,7 @@
     border-color: var(--accent-cyan) !important;
     font-weight: 700;
   }
-
-  .gear-list-carousel {
-    display: grid;
-    grid-template-rows: repeat(2, 118px); /* 双排卡片 */
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(245px, 270px);
-    gap: 10px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 6px;
-    min-height: 250px;
-  }
-  .gear-card-compact {
-    background: linear-gradient(180deg, rgba(22, 31, 52, 0.65), rgba(12, 17, 30, 0.8));
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 8px 12px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    cursor: pointer;
-    transition: all 0.18s ease;
-    height: 118px;
-    box-sizing: border-box;
-  }
-  .gear-card-compact:hover {
-    border-color: rgba(34, 211, 238, 0.5);
-    transform: translateY(-2px);
-  }
-  .gear-card-compact.equipped {
-    border-color: var(--accent-gold);
-    background: linear-gradient(180deg, rgba(50, 38, 12, 0.6), rgba(25, 18, 6, 0.8));
-  }
+  
   .gear-card-compact .gear-header {
     display: flex;
     justify-content: space-between;
@@ -2186,6 +2211,38 @@
     font-weight: 700;
   }
 
+  /* 粉丝胶囊样式 (浅紫微光质感) */
+  .header-fans-pill {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(22, 18, 42, 0.85);
+    border: 1px solid rgba(168, 85, 247, 0.35);
+    border-radius: 999px;
+    padding: 5px 14px;
+    box-shadow: inset 0 1px 0 rgba(168, 85, 247, 0.15), 0 2px 8px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
+  }
+  .header-fans-pill:hover {
+    background: rgba(36, 26, 64, 0.95);
+    border-color: rgba(168, 85, 247, 0.6);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(168, 85, 247, 0.3);
+  }
+  .header-fans-pill .fan-icon {
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .header-fans-pill strong {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #c084fc;
+    letter-spacing: 0.3px;
+    text-shadow: 0 0 10px rgba(192, 132, 252, 0.35);
+  }
+
   .tie-node { min-width: 168px; padding: 8px 10px; }
   .tie-node.user-tie { border-color: var(--accent-gold); box-shadow: 0 0 12px rgba(255,183,3,0.3); background: #241d0d; }
   .tie-node.clickable { cursor: pointer; }
@@ -3489,10 +3546,6 @@
     <div class="app-icon-squircle">
       <span>🏓</span>
     </div>
-    <div class="logo-text-group">
-      <div class="main-title">乒乓球生涯模拟器</div>
-      <div class="sub-title">TABLE TENNIS CAREER SIMULATOR</div>
-    </div>
   </div>
 
   <!-- 中间：居中悬浮胶囊导航栏 (带小图标) -->
@@ -3533,18 +3586,23 @@
   </nav>
 
   <!-- 右侧：资金 + 推进周次按钮 + 选手档案微型胶囊 (无搜索与铃铛) -->
-  <!-- 右侧：说明书 + 资金 + 推进周次按钮 + 选手档案微型胶囊 -->
+ <!-- 右侧：说明书 + 粉丝 + 资金 + 推进周次按钮 + 选手档案微型胶囊 -->
   <div class="header-right">
-    <!-- 📖 新增：说明书按钮 -->
+    <!-- 📖 说明书按钮 -->
     <button class="header-manual-btn" onclick="openManualModal()" title="点击查看游戏完整机制与操作说明书">
-      <span class="manual-icon">📖</span>
-      <span>说明书</span>
+      <span>说明</span>
     </button>
 
-    <!-- 资金胶囊 -->
-    <div id="top-money-badge" class="header-gold-pill">
+    <!-- 👥 粉丝胶囊（无文字标签，悬停展示阶位，点击查看走势） -->
+    <div id="top-fans-badge" class="header-fans-pill" onclick="openFanHistoryModal()" style="cursor:pointer;" title="全网粉丝数">
+      <span class="fan-icon">👥</span>
+      <strong id="top-p-fans">200</strong>
+    </div>
+
+    <!-- 🪙 金钱资金胶囊（点击查看资金起伏走势） -->
+    <div id="top-money-badge" class="header-gold-pill" onclick="openMoneyHistoryModal()" style="cursor:pointer;" title="点击查看历史资金与收支走势">
       <span class="coin-icon">🪙</span>
-      <strong id="top-p-money">$2,000</strong>
+      <strong id="top-p-money">$8,888</strong>
     </div>
 
     <!-- 推进按钮 -->
@@ -3665,238 +3723,250 @@
     </div>
   </div>
 
-  <!-- 全局游戏说明书与系统逻辑图鉴弹窗 -->
-  <div id="game-manual-modal" style="display:none; position:fixed; inset:0; background:rgba(2,4,10,0.88); z-index:3800; justify-content:center; align-items:center; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);">
-    <div class="modal-box manual-modal-box">
-      <!-- 顶部标题栏 -->
-      <div class="manual-modal-header">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-size:1.6rem;">📖</span>
-          <div>
-            <h3 style="color:#fff; font-size:1.25rem; font-weight:800; margin-bottom:2px;">职业生涯手册 · 逻辑与玩法图鉴</h3>
-            <div style="font-size:0.75rem; color:var(--text-dim);">PRO TOUR CAREER COMPREHENSIVE MANUAL & MECHANICS</div>
-          </div>
+  <!-- 全局游戏说明书与系统逻辑图鉴弹窗 (全新官方权威升级版) -->
+<div id="game-manual-modal" style="display:none; position:fixed; inset:0; background:rgba(2,4,10,0.88); z-index:3800; justify-content:center; align-items:center; backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);">
+  <div class="modal-box manual-modal-box">
+    
+    <!-- 顶部标题栏 -->
+    <div class="manual-modal-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:1.6rem;">📖</span>
+        <div>
+          <h3 style="color:#fff; font-size:1.25rem; font-weight:800; margin-bottom:2px;">职业生涯手册 · 核心机制与玩法图鉴</h3>
+          <div style="font-size:0.75rem; color:var(--text-dim);">PRO TOUR CAREER OFFICIAL COMPREHENSIVE MANUAL & MECHANICS</div>
         </div>
-        <button class="btn-action" onclick="closeManualModal()">关闭 ✕</button>
+      </div>
+      <button class="btn-action" onclick="closeManualModal()">关闭 ✕</button>
+    </div>
+
+    <!-- 主体双栏区域 -->
+    <div class="manual-split-container">
+      
+      <!-- 左侧分类导航 -->
+      <div class="manual-nav-sidebar">
+        <button class="manual-nav-btn active" onclick="switchManualTab('m-profile')">🏠 首页与身体机能</button>
+        <button class="manual-nav-btn" onclick="switchManualTab('m-match')">🏓 3D对战与战术克制</button>
+        <button class="manual-nav-btn" onclick="switchManualTab('m-tournament')">🏆 巡回赛与积分规则</button>
+        <button class="manual-nav-btn" onclick="switchManualTab('m-doubles')">👥 双打与搭档系统</button>
+        <button class="manual-nav-btn" onclick="switchManualTab('m-training')">🏃 训练排期与保障团队</button>
+        <button class="manual-nav-btn" onclick="switchManualTab('m-calendar')">📅 官方赛历与场馆</button>
+        <button class="manual-nav-btn" onclick="switchManualTab('m-gear')">🛒 器材配置与商务代言</button>
+        <button class="manual-nav-btn" onclick="switchManualTab('m-stats')">📊 深度数据与名人堂终局</button>
       </div>
 
-      <!-- 主体双栏区域 -->
-      <div class="manual-split-container">
-        <!-- 左侧分类 Tab -->
-        <div class="manual-nav-sidebar">
-          <button class="manual-nav-btn active" onclick="switchManualTab('m-profile')">🏠 首页与球员档案</button>
-          <button class="manual-nav-btn" onclick="switchManualTab('m-doubles')">👥 双打搭档系统</button>
-          <button class="manual-nav-btn" onclick="switchManualTab('m-calendar')">📅 赛历与多站分流</button>
-          <button class="manual-nav-btn" onclick="switchManualTab('m-training')">🏃 训练排期与保障团队</button>
-          <button class="manual-nav-btn" onclick="switchManualTab('m-tournament')">🏆 巡回赛与团体赛</button>
-          <button class="manual-nav-btn" onclick="switchManualTab('m-match')">🏓 3D对战与胜率引擎</button>
-          <button class="manual-nav-btn" onclick="switchManualTab('m-gear')">🛒 器材库与商务赞助</button>
-          <button class="manual-nav-btn" onclick="switchManualTab('m-stats')">📊 深度数据与退役</button>
-        </div>
-
-        <!-- 右侧图文说明内容 -->
-        <div class="manual-content-view" id="manual-content-body">
-          
-          <!-- 1. 首页与球员档案 -->
-          <div id="m-profile" class="manual-tab-pane active">
-            <div class="manual-section-card">
-              <h4>💡 界面交互与隐藏快捷操作</h4>
-              <ul>
-                <li><strong>点击单打/双打世界排名胶囊：</strong> 可呼出该项目过去 52 周直至整个职业生涯的<strong>排名折线走势图</strong>（支持切换近10周、近半年、近5年及总生涯视图）。</li>
-                <li><strong>点击头像或姓名：</strong> 弹出综合档案大卡，查看 12 维具体数值、胜率与近 5 站比赛成绩。</li>
-                <li><strong>点击健康状态标签：</strong> 可打开<strong>历史伤病与医疗康复档案</strong>，回顾生涯所有受过的伤病与康复周期。</li>
-              </ul>
-            </div>
-
-            <div class="manual-section-card">
-              <h4>🔋 体能储备与连续参赛负荷机制</h4>
-              <ul>
-                <li><strong>体能储备（Stamina）：</strong> 满值为 100。低于 50 时参赛失误率上升；低于 30 时有极大概率触发<strong>严重伤病</strong>。</li>
-                <li><strong>连续参赛负荷（Fatigue）：</strong> 连续出战正赛或团体赛会逐周累加负荷（每站消耗体能递增 3 点）。当负荷达到 3 站以上时指示灯变红，伤病概率翻倍；仅当安排<strong>不参赛的休赛周/集训周</strong>推进后，负荷才会重置为 0。</li>
-                <li><strong>轻伤与重伤机制：</strong> 轻伤（拉伤、劳损）仅临时降低 2~3 点单项属性，体能恢复至 65 以上并安排水疗即可自愈；重伤（撕裂、半月板损伤）将<strong>永久扣除 8~12 点基础属性</strong>，需休赛康复后重新训练弥补。</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- 2. 双打搭档系统 -->
-          <div id="m-doubles" class="manual-tab-pane">
-            <div class="manual-section-card">
-              <h4>🤝 邀约搭档与成功率公式</h4>
-              <ul>
-                <li><strong>邀请机制：</strong> 只能在未组队状态下向候选池发起合作邀请。同协会选手拥有 +30% 基础加成；双方单打排名越接近或我方排名越高，对方接受意愿越强。</li>
-                <li><strong>婉拒与 4 周冷却保护：</strong> 若对方拒绝邀约，该选手将进入 <strong>4 周（1 个月）冷静期</strong>，在此期间无法再次发起邀请。</li>
-                <li><strong>解散与归档：</strong> 点击解散组合后，双方共同征战的胜场、负场与斩获的冠军头衔将永久归档至底部的「历任搭档合作档案」中。</li>
-              </ul>
-            </div>
-
-            <div class="manual-section-card">
-              <h4>🔥 搭档默契度（Chemistry）与战力加成</h4>
-              <ul>
-                <li><strong>初始默契：</strong> 同协会初始默契为 75~88，跨国组合初始默契为 45~60。</li>
-                <li><strong>比赛磨合：</strong> 每次搭档双打获胜 +1.5~2.5 默契，失利 +0.5~1.0。</li>
-                <li><strong>战力加成公式：</strong> 团队战斗力 = 双方单打战力均值 × [1.0 + (默契 - 50)/500]。当默契达到满值 100 时，可带来 <strong>+10% 团队战斗力爆发加成</strong>。</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- 3. 官方赛历系统 -->
-          <div id="m-calendar" class="manual-tab-pane">
-            <div class="manual-section-card">
-              <h4>🎨 赛事级别与色带分类</h4>
-              <ul>
-                <li><span class="manual-strip-demo cal-strip-red">🔴 赤红</span> <strong>奥运会 / 世锦赛 / WTT 大满贯 (Grand Smash)：</strong> 积分最高 (2000~3000分)，奖金丰厚，夺冠直接入选生涯奖牌榜。</li>
-                <li><span class="manual-strip-demo cal-strip-purple">🟣 深紫</span> <strong>WTT 冠军赛 / 年终总决赛 / 世界杯：</strong> 积分 1000~1500 分，顶级名将限定赛事。</li>
-                <li><span class="manual-strip-demo cal-strip-blue">🔵 深蓝</span> <strong>WTT 球星挑战赛 (Star Contender)：</strong> 积分 600 分。</li>
-                <li><span class="manual-strip-demo cal-strip-green">🟢 翡翠绿</span> <strong>WTT 常规挑战赛 (Contender)：</strong> 积分 400~500 分。</li>
-                <li><span class="manual-strip-demo cal-strip-gold">🟡 琥珀金</span> <strong>WTT 支线赛 (Feeder) / 洲际赛：</strong> 积分 125 分，<strong>世界前 32 名选手受限无法参赛</strong>，专门为新秀与冲分选手设立。</li>
-                <li><span class="manual-strip-demo cal-strip-gray">⚪ 暗灰</span> <strong>集训与休赛周：</strong> 无正式比赛，专心执行 7 天训练与体能休养。</li>
-              </ul>
-            </div>
-
-            <div class="manual-section-card">
-              <h4>🌐 多赛事并行与右侧面板</h4>
-              <ul>
-                <li><strong>多站并行分流：</strong> 每周会随机并行开出 2~5 站赛事，玩家每周只能选定 1 站报名锁定，其余非用户 AI 选手会自动分流至各站，保证满员对战。</li>
-                <li><strong>右侧 1/4 海报与领奖台：</strong> 点击赛历中任意周次，右侧可查看该站官方实景海报、奖金池、举办城市，以及官方认证的单打与双打冠亚季军领奖台。</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- 4. 训练排期与保障团队 -->
-          <div id="m-training" class="manual-tab-pane">
-            <div class="manual-section-card">
-              <h4>📋 7 天周计划排期与属性增长</h4>
-              <ul>
-                <li><strong>拖拽与点击：</strong> 支持桌面端拖拽或平板触屏点击填入周一至周日的训练插槽。</li>
-                <li><strong>项目偏向：</strong> 正手暴冲（正手/旋转）、反手快撕（反手/移速）、台内摆短（控制/接发）、特色发球（发球/球商）、全台步法（步法/体能）、中远台对拉（防守/旋转）、技战术对抗（球商/心理）、深度水疗（恢复 35 体能）。</li>
-                <li><strong>年龄成长曲线：</strong> 
-                  <br>• 16-22岁【🌱 成长期】：速度与步法训练效率 +35%；
-                  <br>• 23-28岁【🏆 巅峰期】：控制与心理增长效率 +25%；
-                  <br>• 29岁以上【🍂 经验期】：步法略微自然衰退，体能消耗加快，需注重医疗理疗保障。
-                </li>
-              </ul>
-            </div>
-
-            <div class="manual-section-card">
-              <h4>🩺 专属教练与理疗团队</h4>
-              <ul>
-                <li><strong>主管教练：</strong> 提供每周专项训练成长效率加成（最高国家级名帅 +100%）。</li>
-                <li><strong>随队理疗师：</strong> 降低日常训练与比赛的体能消耗（最高国家队专家降低 60%），并大幅增强水疗周的体能回升效果。</li>
-                <li><strong>周薪与解约：</strong> 每周推进时自动扣除团队周薪；若可用资金不足，团队将自动解约。</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- 5. 巡回赛与团体赛 -->
-          <div id="m-tournament" class="manual-tab-pane">
-            <div class="manual-section-card">
-              <h4>🏓 参赛报名线与出战模式</h4>
-              <ul>
-                <li><strong>参赛门槛：</strong> 
-                  <br>• 排名 ≤ Direct Cut：直通正赛；
-                  <br>• Direct Cut < 排名 ≤ Quali Cut：进入 4 强资格赛，连续突围 2 轮可晋级正赛；
-                  <br>• 排名 > Quali Cut：排名不足，仅可观赛。
-                </li>
-                <li><strong>单打 / 双打 / 兼项模式：</strong> 拥有固定搭档时可选择单打、双打或双线兼项出战。兼项需支付 1.3 倍综合差旅费且体能消耗加倍，但可同时收获两项独立世界积分与双份奖金！</li>
-                <li><strong>52 周滚动世界积分：</strong> 获得的赛事积分只在赛后 52 周（1年）内计入总榜，超期自动扣除，拒绝数值无限膨胀。</li>
-              </ul>
-            </div>
-
-            <div class="manual-section-card">
-              <h4>🏆 斯韦思林杯男子团体赛机制</h4>
-              <ul>
-                <li><strong>国家队选拔：</strong> 第 19 周世锦赛/团体世界杯时开启，本国综合选拔前 5 名国手组队（强国竞争激烈，若状态下滑可能落选）。</li>
-                <li><strong>小组循环赛 + 淘汰赛：</strong> 先分为 4 队一组进行循环赛（打满 3 轮），各组前 2 名出线晋级淘汰赛正赛。</li>
-                <li><strong>排兵布阵：</strong> 按照单打(一单) → 单打(二单) → 双打 → 单打(一单) → 单打(二单) 顺序出战，先胜 3 场获胜。</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- 6. 比赛转播与胜率引擎 -->
-          <div id="m-match" class="manual-tab-pane">
-            <div class="manual-section-card">
-              <h4>⚡ 拟真乒乓比赛模拟引擎</h4>
-              <ul>
-                <li><strong>单分胜率压缩（32%~68%）：</strong> 杜绝离谱悬殊比分，即使新秀迎战世界第一也能打出真实的 6-11、8-11 分差，并保留爆冷可能。</li>
-                <li><strong>关键分与心理素质：</strong> 当双方战至 9 平或 10 平 Deuce 阶段，选手的<strong>心理（Mental）</strong>与<strong>战术球商（Tactics）</strong>对胜负权重提升 300%。</li>
-                <li><strong>战术动作判定：</strong> 发球抢攻直接得分、反手霸气拧拉（Chiquita）、中远台相持变线、下网或出界失误。</li>
-                <li><strong>3D 动画与极速模式：</strong> 支持 3D 拟真击球轨迹与球拍挥击；也可在设置中随时关闭动画，实现毫秒级瞬时结算。</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- 7. 器材库与商务赞助 -->
-          <!-- 7. 器材库与商务赞助 -->
-          <div id="m-gear" class="manual-tab-pane">
-            <div class="manual-section-card">
-              <h4>🏓 专业器材阶位与四大装备槽位</h4>
-              <ul>
-                <li><strong>四大穿戴部位：</strong> 包含<strong>底板（Blade）</strong>、<strong>正手胶皮（Forehand）</strong>、<strong>反手胶皮（Backhand）</strong>和<strong>球鞋（Shoes）</strong>。</li>
-                <li><strong>器材阶位体系（T1 ~ T4）：</strong>
-                  <br>• <span class="badge badge-feed">T1 入门</span>：基础普及款器材，无购买限制，免受品牌赞助排他性约束（可自由过渡）。
-                  <br>• <span class="badge badge-cont">T2 进阶</span>：初级专业器材（如 CL纯木、雷神K1、亚萨卡R7）。
-                  <br>• <span class="badge badge-star">T3 专业</span>：主力竞技器材（如 狂飚龙5、省狂3、挺拔变革系列）。
-                  <br>• <span class="badge badge-gold">T4 国手</span>：世界顶尖/国手御用旗舰（如 蝴蝶Viscaria/樊振东ALC、国狂蓝海绵、Dignics 09C/05、美津浓旗舰战靴）。
-                </li>
-              </ul>
-            </div>
-
-            <div class="manual-section-card">
-            <h4>⚙️ 器材属性精准加成换算公式</h4>
-            <p style="font-size:0.82rem; color:var(--text-dim); margin-bottom:8px;">
-              装备所附带的速度、旋转、控制与步法值，将按以下权重系数实时结算进球员的 12 维真实属性中：
-            </p>
+      <!-- 右侧说明视窗 -->
+      <div class="manual-content-view" id="manual-content-body">
+        
+        <!-- 1. 首页与身体机能 -->
+        <div id="m-profile" class="manual-tab-pane active">
+          <div class="manual-section-card">
+            <h4>💡 界面交互与快捷操作</h4>
             <ul>
-              <li><strong>💥 正手杀伤：</strong> 基础值 + <span style="color:var(--accent);">正手速度 × 0.8</span> + <span style="color:var(--accent-gold);">底板速度 × 0.4</span></li>
-              <li><strong>⚡ 反手速度：</strong> 基础值 + <span style="color:var(--accent-cyan);">反手速度 × 0.8</span> + <span style="color:var(--accent-gold);">底板速度 × 0.3</span></li>
-              <li><strong>🌪️ 击球旋转：</strong> 基础值 + <span style="color:var(--accent);">正手旋转 × 0.5</span> + <span style="color:var(--accent-cyan);">反手旋转 × 0.3</span> + <span style="color:var(--accent-gold);">底板旋转 × 0.3</span> <em>（底板吃球形变制造强烈弧线）</em></li>
-              <li><strong>🎯 台内控制：</strong> 基础值 + <span style="color:var(--accent-gold);">底板控制 × 0.5</span> + <span style="color:var(--accent);">正手控制 × 0.3</span></li>
-              <li><strong>🛡️ 相持防守：</strong> 基础值 + <span style="color:var(--accent-gold);">底板控制 × 0.4</span> + <span style="color:var(--accent-cyan);">反手控制 × 0.3</span> + <span style="color:var(--accent-gold);">底板旋转 × 0.2</span> <em>（相持底劲支撑）</em></li>
-              <li><strong>🌀 特色发球：</strong> 基础值 + <span style="color:var(--accent);">正手旋转 × 0.4</span> + <span style="color:var(--accent-gold);">底板旋转 × 0.2</span> + <span style="color:var(--accent-gold);">底板控制 × 0.2</span></li>
-              <li><strong>🏓 接发拧拉：</strong> 基础值 + <span style="color:var(--accent-cyan);">反手控制 × 0.4</span> + <span style="color:var(--accent-gold);">底板控制 × 0.3</span></li>
-              <li><strong>💨 爆发移速：</strong> 基础值 + <span style="color:#38bdf8;">球鞋速度 × 0.6</span></li>
-              <li><strong>🏃 摆速步法：</strong> 基础值 + <span style="color:#38bdf8;">球鞋步法 × 1.0</span></li>
-              <li><strong>🔋 体能 / 🧠 心理 / ♟️ 球商：</strong> 为球员核心内在机能，主要通过实战对抗与专项训练提升，不受器材数值直接影响。</li>
+              <li><strong>单打/双打世界排名胶囊：</strong> 点击可呼出历史世界排名折线走势图（支持近10周、近半年、近5年及总生涯视图切换）。</li>
+              <li><strong>选手头像 / 姓名：</strong> 点击打开综合档案大卡，查看 12 维具体数值、装备配置及最近 5 站比赛履历。</li>
+              <li><strong>健康状态标签：</strong> 点击打开<strong>历史伤病档案</strong>，可回顾生涯所有受过的伤病、严重程度与康复记录。</li>
             </ul>
           </div>
 
-            <div class="manual-section-card">
-              <h4>🌟 综合战力（Overall Combat Power）换算</h4>
-              <p style="font-size:0.82rem; color:var(--text-dim); margin-bottom:6px;">
-                叠加器材与伤病后的 12 维属性，会通过加权平均转化为选手的综合战力：
-              </p>
-              <div style="font-size:0.8rem; background:rgba(0,0,0,0.3); padding:8px 12px; border-radius:8px; border:1px solid var(--border); line-height:1.6; color:#cbd5e1;">
-                <strong>综合战力 = </strong> 正手(12%) + 反手(10%) + 旋转(10%) + 控制(8%) + 相持(8%) + 发球(8%) + 接发(8%) + 移速(8%) + 步法(8%) + 体能(6%) + 心理(7%) + 球商(7%)
-              </div>
-            </div>
-
-            <div class="manual-section-card">
-              <h4>🤝 商务赞助与品牌排他约束</h4>
-              <ul>
-                <li><strong>器材赞助（限 1 家）：</strong> 拥有品牌排他性。签约后<strong>只能装备该品牌的 T2~T4 专业器材</strong>（换签新品牌时，原非合规装备将自动卸下换回通用基础款）。</li>
-                <li><strong>商业广告代言（可无限签约）：</strong> 纯商业收益，无任何器材使用限制。红牛、保时捷、劳力士等品牌可同时并存，每周合并发放全部周薪。</li>
-                <li><strong>商务谈判冷却期：</strong> 若因开价过高谈判破裂，该品牌将进入 <strong>4 周冷静期</strong>，冷静期满后方可重新递交申请。</li>
-              </ul>
-            </div>
+          <div class="manual-section-card">
+            <h4>🔋 体能储备、负荷指示灯与伤病机制</h4>
+            <ul>
+              <li><strong>体能储备（Stamina）：</strong> 满值为 100。低于 50 时失误率上升；低于 30 时有极大概率触发重伤。</li>
+              <li><strong>连续参赛负荷（Fatigue）：</strong> 连续出战正赛或团体赛会累加负荷（每站消耗体能递增 3 点）。当连续参赛达到 3 站以上时指示灯亮起红灯，伤病率翻倍；仅当安排<strong>不参赛的休赛周/集训周</strong>推进后负荷才会清零重置。</li>
+              <li><strong>轻度伤病（Mild）：</strong> 肌肉拉伤、关节酸痛等仅临时降低 2~3 点单项属性，体能回升至 55 以上并安排水疗即可完全自愈。</li>
+              <li><strong>重大伤病（Severe）：</strong> 半月板损伤、肩袖撕裂等将<strong>永久扣除 8~12 点基础属性</strong>，需休赛康复后重新训练弥补受损属性。</li>
+            </ul>
           </div>
-
-          <!-- 8. 深度数据与退役 -->
-          <div id="m-stats" class="manual-tab-pane">
-            <div class="manual-section-card">
-              <h4>📊 H2H 对战卡片与奖牌陈列柜</h4>
-              <ul>
-                <li><strong>H2H 卡片：</strong> 自动收录所有在正式巡回赛中与你交手过的对手，按交手总场次降序排列；即使对手退役，战绩仍然完整保留。</li>
-                <li><strong>终身大赛奖牌榜（Medals）：</strong> 奥运会、世乒赛、世界杯、大满贯、冠军赛、总决赛中打进前三名（金、银、铜牌）永久镌刻入榜。</li>
-                <li><strong>老将退役与新星入驻：</strong> 每年赛季末 36 岁以上老将按概率退役入驻名人堂，并根据真实国籍生成具有本土姓名的新秀替补，生态生生不息。</li>
-                <li><strong>退役评级：</strong> 宣布退役后将由国际乒联名人堂根据三大赛金牌、最高排名、总冠军数生成终身评级（GOAT / SSS / S / A / B / C）。</li>
-              </ul>
-            </div>
-          </div>
-
         </div>
+
+        <!-- 2. 3D对战与战术克制 -->
+        <div id="m-match" class="manual-tab-pane">
+          <div class="manual-section-card">
+            <h4>⚡ 拟真乒乓胜率引擎与分差压缩</h4>
+            <ul>
+              <li><strong>单分胜率压缩（32%~68%）：</strong> 模拟乒乓球真实对抗，杜绝离谱悬殊比分。即使新秀迎战世界第一也能打出真实的 6-11、8-11 分差，并保留爆冷可能。</li>
+              <li><strong>关键分心理加成：</strong> 当双方打至 9-9 或 10-10 加分局时，选手的<strong>心理素质（Mental）</strong>与<strong>战术球商（Tactics）</strong>权重提升 300%。</li>
+            </ul>
+          </div>
+
+          <div class="manual-section-card">
+            <h4>⚔️ 真实打法风格克制引擎 (战力分差 ≤ 5 点生效)</h4>
+            <p style="font-size:0.82rem; color:var(--text-dim); margin-bottom:8px;">
+              当双方战力差距悬殊（分差 &gt; 5）时，高水平选手的绝对击球质量将抹平克制（一力降十会）；当双方战力接近（分差 ≤ 5）时，打法克制全面激活，克制方获得 <strong>+3.5 点动态战力加成</strong>：
+            </p>
+            <ul>
+              <li><strong>💥 暴力弧圈重炮型：</strong> 克制【削球防守】与【稳健相持】，单板超高质量直接冲穿防守；但害怕【近台极速快撕】被顶住前手引拍空间。</li>
+              <li><strong>⚡ 近台极速快撕型：</strong> 克制【暴力弧圈】，借力快带快撕不给对方后撤发力时间；但惧怕【落点节奏大师】的长短节奏变换。</li>
+              <li><strong>🏓 直拍快变突击型：</strong> 前三板落点刁钻，克制【常规相持】；但在大力量长拉锯中单板防守硬度处于劣势。</li>
+              <li><strong>🛡️ 削球防守反击型：</strong> 旋转剧烈多变，克制【急躁快攻】与【突击型】；但难以抵挡【极致力量爆冲】的连续正面强冲。</li>
+              <li><strong>🎯 落点节奏大师型：</strong> 长短结合与假动作变线，克制【极速拼板】与【盲目发力】。</li>
+            </ul>
+          </div>
+
+          <div class="manual-section-card">
+            <h4>🎯 局内实时战术指令与叫暂停机制</h4>
+            <ul>
+              <li><strong>回合间随时切换战术：</strong>
+                <br>• <strong>⚪ 常规相持：</strong> 攻防均衡，稳定发挥个人基础属性。
+                <br>• <strong>💥 搏杀发抢：</strong> 前三板杀伤 +20%，发球直接得分率上升，但搏杀出界失误率略微上升。
+                <br>• <strong>🎯 摆短控网：</strong> 强化台内控球，大幅降低对手反手强力拧拉（Chiquita）起板率。
+                <br>• <strong>⚡ 压反调正：</strong> 针对对手反手位突击，强迫对手大范围移动步法。
+                <br>• <strong>🛡️ 退台对拉：</strong> 强化相持防守，诱导对手进入多拍消耗战。
+              </li>
+              <li><strong>⏸️ 随时申请暂停（每场限 1 次）：</strong> 比赛任何比分下均可主动暂停。立即<strong>打断对手连续得分势头</strong>，并在接下来的 2 个回合内为我方提供 <strong>+12 点心理专注加成</strong>，同时微量恢复体能。</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 3. 巡回赛与积分规则 -->
+        <div id="m-tournament" class="manual-tab-pane">
+          <div class="manual-section-card">
+            <h4>🏆 ITTF 官方真实积分规则：52 周内最佳 8 站有效分 (Best 8 Results)</h4>
+            <ul>
+              <li><strong>滚动 52 周窗口：</strong> 积分仅在获得后的 52 周（1年）内有效，超期自动扣除。</li>
+              <li><strong>最佳 8 站有效分求和：</strong> 选手的世界排名总积分<strong>仅截取过去 52 周内得分最高的 8 站比赛相加</strong>。</li>
+              <li><strong>保分与涨分机制：</strong> 当参赛达到 8 站以上时，获得低级别赛事积分不会无脑无限累加，只有当单站积分超过你已有的第 8 站分数时，才会顶替差额实现涨分，完美还原真实巡回赛竞争体系！</li>
+            </ul>
+          </div>
+
+          <div class="manual-section-card">
+            <h4>🏓 参赛门槛与出战模式</h4>
+            <ul>
+              <li><strong>报名线：</strong> 排名 ≤ Direct Cut 直通正赛；Direct Cut &lt; 排名 ≤ Quali Cut 进入 4 强资格赛突围；排名不足则仅可观赛。</li>
+              <li><strong>单打 / 双打 / 兼项：</strong> 拥有搭档时可单打、双打或双线兼项出战。兼项需支付 1.3 倍差旅费且体能消耗增加，但可同时收获双份积分与奖金！</li>
+              <li><strong>斯韦思林杯男子团体赛：</strong> 世锦赛团体周开启，由本国排名前 5 名选手组队。先进行 4 队一组的小组单循环赛，各组前 2 名出线晋级淘汰赛正赛。</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 4. 双打搭档系统 -->
+        <div id="m-doubles" class="manual-tab-pane">
+          <div class="manual-section-card">
+            <h4>🤝 邀约搭档与 4 周冷静期</h4>
+            <ul>
+              <li><strong>邀请机制：</strong> 只能在未组队状态下向候选池发起邀请。同协会选手拥有 +30% 基础意愿加成；双方单打排名越接近对方接受概率越高。</li>
+              <li><strong>4 周冷却保护：</strong> 若对方婉拒邀约，将进入 <strong>4 周冷静期</strong>，冷静期内无法再次发起邀请。</li>
+              <li><strong>解散与归档：</strong> 解散后，双方合作期间的胜负场次与冠军头衔将永久归档至「历任搭档合作档案」中。</li>
+            </ul>
+          </div>
+
+          <div class="manual-section-card">
+            <h4>🔥 搭档默契度（Chemistry）与战力加成</h4>
+            <ul>
+              <li><strong>初始默契：</strong> 同协会初始为 75~88，跨国组合初始为 45~60。</li>
+              <li><strong>比赛磨合：</strong> 每次搭档获胜 +1.5~2.5 默契，失利 +0.5~1.0。</li>
+              <li><strong>团队战斗力公式：</strong> 团队战力 = 双方战力均值 × [1.0 + (默契 - 50)/50 × 10%]。当默契达到满值 100 时可带来 <strong>+10% 团队战斗力爆发加成</strong>。</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 5. 训练排期与保障团队 -->
+        <div id="m-training" class="manual-tab-pane">
+          <div class="manual-section-card">
+            <h4>📋 7 天周计划排期与成长曲线</h4>
+            <ul>
+              <li><strong>训练项目：</strong> 正手暴冲（正手/旋转）、反手快撕（反手/移速）、台内摆短（控制/接发）、特色发球（发球/球商）、全台步法（步法/体能）、中远台对拉（防守/旋转）、技战术对抗（球商/心理）、深度水疗（恢复 35 体能/祛轻伤）。</li>
+              <li><strong>年龄成长曲线：</strong>
+                <br>• 16-22岁【🌱 成长期】：速度与步法训练效率 +35%；
+                <br>• 23-28岁【🏆 巅峰期】：控制与心理增长效率 +25%；
+                <br>• 29岁以上【🍂 经验期】：步法自然缓慢衰退，体能消耗加快，需注重医疗理疗保障。
+              </li>
+            </ul>
+          </div>
+
+          <div class="manual-section-card">
+            <h4>🩺 专属教练与随队理疗师</h4>
+            <ul>
+              <li><strong>主管教练：</strong> 提供每周专项训练成长效率加成（最高国家级名帅 +100% 效率）。</li>
+              <li><strong>随队理疗师：</strong> 降低日常训练与参赛的体能消耗（最高国家队专家降低 60% 消耗），并提升水疗周的体能恢复效果。</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 6. 官方赛历与场馆 -->
+        <div id="m-calendar" class="manual-tab-pane">
+          <div class="manual-section-card">
+            <h4>🎨 赛事级别色带一览</h4>
+            <ul>
+              <li><span class="manual-strip-demo cal-strip-red">🔴 赤红</span> <strong>奥运会 / 世锦赛 / WTT 大满贯：</strong> 积分最高 (2000~3000分)，奖金丰厚，夺冠直接入选生涯奖牌榜。</li>
+              <li><span class="manual-strip-demo cal-strip-purple">🟣 深紫</span> <strong>WTT 冠军赛 / 年终总决赛 / 世界杯：</strong> 积分 1000~1500 分，顶级名将限定。</li>
+              <li><span class="manual-strip-demo cal-strip-blue">🔵 深蓝</span> <strong>WTT 球星挑战赛：</strong> 积分 600 分。</li>
+              <li><span class="manual-strip-demo cal-strip-green">🟢 翡翠绿</span> <strong>WTT 常规挑战赛：</strong> 积分 400~500 分。</li>
+              <li><span class="manual-strip-demo cal-strip-gold">🟡 琥珀金</span> <strong>WTT 支线赛 / 洲际赛：</strong> 积分 125 分，世界前 32 名选手受限无法参赛，专门为新秀冲分设立。</li>
+              <li><span class="manual-strip-demo cal-strip-gray">⚪ 暗灰</span> <strong>集训与休赛周：</strong> 专心执行 7 天训练与体能休养。</li>
+            </ul>
+          </div>
+          <div class="manual-section-card">
+            <h4>🌐 多站并行分流与历史回溯</h4>
+            <ul>
+              <li>每周开出 2~5 站赛事，玩家选定 1 站锁定，其余非用户 AI 选手自动分流。</li>
+              <li>赛历顶部支持自由切换历史年份，点击任意周次可回顾该站场馆实景海报、奖金池及单双打领奖台战报。</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 7. 器材配置与商务代言 -->
+        <div id="m-gear" class="manual-tab-pane">
+          <div class="manual-section-card">
+            <h4>🏓 专业器材阶位与属性加成</h4>
+            <ul>
+              <li><strong>四大槽位：</strong> 底板（Blade）、正手胶皮（Forehand）、反手胶皮（Backhand）、球鞋（Shoes）。</li>
+              <li><strong>阶位体系（T1~T4）：</strong> T1 入门普及（无限制）、T2 进阶实战、T3 专业竞技、T4 国手旗舰特注。</li>
+              <li><strong>真实属性折算：</strong> 
+                <br>• 正手杀伤 = 正手胶皮速度 × 0.8 + 底板速度 × 0.4；
+                <br>• 反手速度 = 反手胶皮速度 × 0.8 + 底板速度 × 0.3；
+                <br>• 击球旋转 = 正手旋转 × 0.5 + 反手旋转 × 0.3 + 底板旋转 × 0.3；
+                <br>• 台内控制 = 底板控制 × 0.5 + 正手控制 × 0.3；
+                <br>• 相持防守 = 底板控制 × 0.4 + 反手控制 × 0.3 + 底板旋转 × 0.2；
+                <br>• 移速步法 = 球鞋属性全额折算。
+              </li>
+            </ul>
+          </div>
+
+          <div class="manual-section-card">
+            <h4>🤝 商务赞助与品牌排他约束</h4>
+            <ul>
+              <li><strong>器材赞助（限 1 家）：</strong> 具排他性。签约后<strong>只能装备该品牌的 T2~T4 专业器材</strong>（换签新品牌时原非合规装备自动换回通用基础款）。</li>
+              <li><strong>商业广告代言（可无限签约）：</strong> 纯商业收益，无任何器材限制。红牛、保时捷、劳力士等品牌可同时并存，每周合并发放代言周薪。</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 8. 深度数据与名人堂终局 -->
+        <div id="m-stats" class="manual-tab-pane">
+          <div class="manual-section-card">
+            <h4>📊 H2H 对战卡片与奖牌陈列柜</h4>
+            <ul>
+              <li><strong>H2H 卡片库：</strong> 自动收录所有与你交手过的对手，按交手场次排序，即使对手退役战绩依然完整保留。</li>
+              <li><strong>终身大赛奖牌榜（Medals）：</strong> 奥运会、世锦赛、世界杯、大满贯等顶级大赛打进前三名（金、银、铜牌）永久镌刻入榜。</li>
+              <li><strong>退役名人堂：</strong> 32 岁以上选手及遭遇重大伤病选手每年阶梯式自然退役，并由新一代本土青年才俊递补进入巡回赛。</li>
+            </ul>
+          </div>
+
+          <div class="manual-section-card">
+            <h4>👑 国际乒联名人堂 · 22 种专属生涯终局评定</h4>
+            <p style="font-size:0.82rem; color:var(--text-dim); margin-bottom:8px;">
+              宣布退役时，系统将综合你的单打/双打冠军数、世界最高排名、三大赛金牌、总奖金、商业资产、决胜局抗压胜率及伤病履历，生成专属终身评级：
+            </p>
+            <ul>
+              <li><strong>👑 GOAT (乒坛至尊)：</strong> 三大赛金牌 ≥ 4 且登顶世界第一（双圈大满贯球皇）。</li>
+              <li><strong>🌟 SSS (大满贯得主)：</strong> 奥运会 + 世锦赛 + 世界杯单打金牌全满贯。</li>
+              <li><strong>⚔️ SS (全能六边形球圣)：</strong> 单打与双打冠军各 ≥ 4 座且排名前 5。</li>
+              <li><strong>👥 SS (双打教父)：</strong> 斩获 ≥ 6 座双打桂冠且双打排名前 2。</li>
+              <li><strong>🦁 S+ (决胜狂魔)：</strong> 决胜局胜率 ≥ 68% 且战胜世界前十 ≥ 4 场（绝境逆转王）。</li>
+              <li><strong>🥈 S (悲情球圣)：</strong> 斩获 ≥ 4 枚大赛银牌（金牌 ≤ 1）的无冕大师。</li>
+              <li><strong>💼 S- (商业巨子)：</strong> 退役资产突破 $80,000 且手握多项顶级跨国商业代言。</li>
+              <li><strong>🛡️ B+ (钢铁之躯)：</strong> 征战 ≥ 8 年、比赛 ≥ 40 场且生涯伤病 ≤ 1 次的常青树铁人。</li>
+              <li><strong>🩹 B (伤痕累累)：</strong> 经历 ≥ 2 次严重重大伤病但坚持拼搏到底的悲情勇士。</li>
+              <li><strong>🌾 B+ (支线霸主) / 💥 A+ (重炮名将) / 🤝 A (双打奇兵) / 🌠 C+ (昙花一现) 等丰富结局。</strong></li>
+            </ul>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
+</div>
 
   <!-- 1. 球员主页 -->
   <div id="tab-profile" class="tab-content active">
@@ -3945,6 +4015,7 @@
             <div style="display: flex; gap: 5px; flex-wrap: wrap;">
               <span class="mac-tag" id="p-style">--</span>
               <span class="mac-tag" id="p-hand">--</span>
+              <span class="badge badge-gold" id="p-fans-badge" style="cursor:pointer;" title="全网粉丝数与体坛声望阶位">👥 200 粉丝</span>
             </div>
           </div>
         </div>
@@ -3958,7 +4029,7 @@
               <span style="color: var(--accent-gold);">🏆</span>
             </div>
             <div class="mac-widget-metric" id="p-points" style="color: var(--accent-gold); text-shadow: 0 0 12px rgba(255,183,3,0.3);">0</div>
-            <div class="mac-sub-tag">52周滚动累积</div>
+            <div class="mac-sub-tag">52周最佳8站有效分 (ITTF)</div>
           </div>
 
           <!-- 卡片 2: 可用资金 -->
@@ -4393,31 +4464,73 @@
 
   <!-- 7. 器材与赞助 -->
   <div id="tab-gear" class="tab-content">
+    <!-- 商业赞助与品牌代言卡片 -->
     <div class="card" style="margin-bottom: 14px; padding: 16px 20px;">
-      <div class="card-title" style="margin-bottom: 10px; padding-bottom: 8px;">
+      <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
         <span>商业赞助与品牌代言 (Sponsorships & Endorsements)</span>
-        <span style="font-size: 0.78rem; color: var(--text-dim);">器材赞助锁定器材使用 • 商业代言纯享高额周薪</span>
+        <span style="font-size: 0.78rem; color: var(--text-dim);">支持数百家品牌搜索、状态筛选与极速翻页</span>
       </div>
-      <div style="display:flex; gap:8px; margin-bottom:10px;">
-        <button class="btn-action active-gear-type" id="btn-sp-tab-gear" onclick="switchSponsorCategory('gear', this)">🏓 专业器材品牌赞助</button>
-        <button class="btn-action" id="btn-sp-tab-comm" onclick="switchSponsorCategory('commercial', this)">💼 商业广告与品牌代言</button>
+
+      <!-- 1. 顶部主分类 + 状态过滤 + 搜索栏 -->
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <!-- 分类与资格胶囊 -->
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;" id="sponsor-filter-group">
+          <button class="btn-action active-gear-type" id="btn-sp-tab-gear" onclick="switchSponsorCategory('gear', this)">🏓 器材赞助</button>
+          <button class="btn-action" id="btn-sp-tab-comm" onclick="switchSponsorCategory('commercial', this)">💼 商业代言</button>
+          <span style="color:rgba(255,255,255,0.15); margin:0 2px;">|</span>
+          <button class="gear-filter-btn active" onclick="filterSponsorStatus('all', this)">全部</button>
+          <button class="gear-filter-btn" onclick="filterSponsorStatus('eligible', this)">✨ 仅看可签约</button>
+          <button class="gear-filter-btn" onclick="filterSponsorStatus('signed', this)">✓ 仅看已签约</button>
+          <button class="gear-filter-btn" onclick="filterSponsorStatus('cooldown', this)">⏳ 仅看冷却中</button>
+        </div>
+
+        <!-- 实时搜索框 -->
+        <div style="width: 200px;">
+          <input type="text" id="inp-sponsor-search" placeholder="🔍 搜索赞助品牌..." oninput="handleSponsorSearch(this.value)" style="padding: 4px 12px; font-size: 0.78rem; border-radius: 999px;">
+        </div>
       </div>
-      <div id="sponsors-container"></div>
+
+      <!-- 2. 赞助商网格 (固定高度 160px，放 3 排，每排 5 列) -->
+      <div id="sponsors-container" style="min-height: 160px;"></div>
+
+      <!-- 3. 底部翻页栏 -->
+      <div id="sponsors-pagination" class="news-pagination-bar" style="margin-top: 8px; padding: 4px 10px;"></div>
     </div>
 
     <div class="card" style="padding: 16px 20px;">
-      <div class="card-title" style="margin-bottom: 10px; padding-bottom: 8px;">
+      <div class="card-title" style="margin-bottom: 8px; padding-bottom: 6px;">
         <span>专业器材装备库 (Blades, Rubbers & Shoes)</span>
-        <span style="font-size: 0.78rem; color: var(--text-dim);">双排横向展示 • 点击品牌快速筛选</span>
+        <span style="font-size: 0.78rem; color: var(--text-dim);">支持数百款器材多维筛选、即时搜索与分页全览</span>
       </div>
-      <div style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
-        <button class="btn-action active-gear-type" onclick="changeGearCategory('blade', this)">底板 (Blades)</button>
-        <button class="btn-action" onclick="changeGearCategory('fh', this)">正手胶皮 (Forehand)</button>
-        <button class="btn-action" onclick="changeGearCategory('bh', this)">反手胶皮 (Backhand)</button>
-        <button class="btn-action" onclick="changeGearCategory('shoes', this)">球鞋 (Footwear)</button>
+
+      <!-- 1. 一级大品类 + 阶位筛选 + 搜索框 -->
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;" id="gear-category-group">
+          <button class="btn-action active-gear-type" onclick="changeGearCategory('blade', this)">底板 (Blades)</button>
+          <button class="btn-action" onclick="changeGearCategory('fh', this)">正手胶皮 (Forehand)</button>
+          <button class="btn-action" onclick="changeGearCategory('bh', this)">反手胶皮 (Backhand)</button>
+          <button class="btn-action" onclick="changeGearCategory('shoes', this)">球鞋 (Footwear)</button>
+          <span style="color:rgba(255,255,255,0.15); margin:0 2px;">|</span>
+          <button class="gear-filter-btn active" onclick="filterGearTier('all', this)">全部阶位</button>
+          <button class="gear-filter-btn" onclick="filterGearTier('1', this)">T1 入门</button>
+          <button class="gear-filter-btn" onclick="filterGearTier('2', this)">T2 进阶</button>
+          <button class="gear-filter-btn" onclick="filterGearTier('3', this)">T3 专业</button>
+          <button class="gear-filter-btn" onclick="filterGearTier('4', this)">T4 国手</button>
+        </div>
+
+        <div style="width: 200px;">
+          <input type="text" id="inp-gear-search" placeholder="🔍 搜索器材名称..." oninput="handleGearSearch(this.value)" style="padding: 4px 12px; font-size: 0.78rem; border-radius: 999px;">
+        </div>
       </div>
-      <div class="gear-filter-bar" id="gear-brand-filters"></div>
+
+      <!-- 2. 品牌胶囊栏 -->
+      <div class="gear-filter-bar" id="gear-brand-filters" style="margin-bottom:8px;"></div>
+
+      <!-- 3. 器材网格容器 (每页 15 款) -->
       <div class="gear-list-carousel" id="gear-container"></div>
+
+      <!-- 4. 底部翻页栏 -->
+      <div id="gear-pagination" class="news-pagination-bar" style="margin-top: 8px; padding: 4px 10px;"></div>
     </div>
   </div>
 
@@ -4789,63 +4902,135 @@
   </div>
 </div>
 
-<!-- 生涯总结与退役名人堂弹窗 -->
-<div id="retirement-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:2000; justify-content:center; align-items:center; backdrop-filter:blur(8px);">
-  <div class="modal-box" style="max-width: 780px; border: 2px solid var(--accent-gold);">
-    <div style="text-align: center; margin-bottom: 20px;">
-      <div style="font-size: 3.5rem;">👑</div>
-      <h2 style="color: var(--accent-gold); font-size: 1.6rem; margin-bottom: 6px;">传奇谢幕 · 职业生涯终极总结</h2>
-      <p style="color: var(--text-dim); font-size: 0.9rem;" id="retire-subtitle">感谢你在世界乒坛留下的辉煌篇章！</p>
+<!-- 生涯总结与退役名人堂弹窗 (全能多维豪华版) -->
+<div id="retirement-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:2000; justify-content:center; align-items:center; backdrop-filter:blur(10px);">
+  <div class="modal-box" style="max-width: 860px; max-height: 90vh; overflow-y: auto; border: 2px solid var(--accent-gold); padding: 24px 28px;">
+    
+    <!-- 顶部标题 -->
+    <div style="text-align: center; margin-bottom: 16px;">
+      <div style="font-size: 3rem; line-height: 1;">👑</div>
+      <h2 style="color: var(--accent-gold); font-size: 1.5rem; margin: 4px 0;">传奇谢幕 · 职业生涯终极总结</h2>
+      <p style="color: var(--text-dim); font-size: 0.84rem;" id="ret-subtitle">感谢你在世界乒坛留下的辉煌篇章！</p>
     </div>
 
-    <div class="grid-2" style="margin-bottom: 16px;">
-      <div class="card" style="background: var(--bg-card-alt); margin-bottom: 0;">
-        <div class="card-title" style="color: var(--accent-cyan);">🏅 球员履历</div>
-        <div style="font-size: 0.9rem; line-height: 2;">
-          <div>选手姓名: <strong id="ret-name">--</strong></div>
-          <div>代表协会: <strong id="ret-country">--</strong></div>
-          <div>征战年限: <strong id="ret-years">--</strong></div>
-          <div>退役年龄: <strong id="ret-age">--</strong></div>
-          <div>历史最高排名: <strong id="ret-best-rank" style="color: var(--accent-gold);">#--</strong></div>
-          <div>最终世界排名: <strong id="ret-final-rank">#--</strong></div>
+    <!-- 四格多维生涯数据看板 -->
+    <div class="grid-2" style="gap: 12px; margin-bottom: 14px;">
+      
+      <!-- 1. 单打生涯 -->
+      <div class="card" style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); margin-bottom: 0; padding: 12px 16px;">
+        <div class="card-title" style="color: var(--accent); font-size: 0.95rem; margin-bottom: 6px; padding-bottom: 4px;">
+          🏓 单打履历与战绩
+        </div>
+        <div style="font-size: 0.82rem; line-height: 1.8; color: #cbd5e1;">
+          <div style="display:flex; justify-content:space-between;"><span>选手 / 协会:</span> <strong id="ret-name-country" style="color:#fff;">--</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>征战历程:</span> <span id="ret-years-age">--</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>最高 / 最终单打排名:</span> <span id="ret-ranks" style="color:var(--accent-gold); font-weight:bold;">#-- / #--</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>单打总战绩:</span> <span id="ret-singles-record">0胜 0负 (0.0%)</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>生涯最长连胜:</span> <strong id="ret-streak" style="color:#4ade80;">0 连胜</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>对决世界前十战绩:</span> <span id="ret-top10-record">0胜 0负 (0.0%)</span></div>
         </div>
       </div>
 
-      <div class="card" style="background: var(--bg-card-alt); margin-bottom: 0;">
-        <div class="card-title" style="color: var(--accent-gold);">📊 战绩与商业成就</div>
-        <div style="font-size: 0.9rem; line-height: 2;">
-          <div>总出战场次: <strong id="ret-matches">0</strong> 场</div>
-          <div>生涯总战绩: <strong id="ret-record" style="color: var(--accent-blue);">0胜 0负</strong></div>
-          <div>生涯总胜率: <strong id="ret-winrate" style="color: var(--accent-gold);">0.0%</strong></div>
-          <div>最长连胜纪录: <strong id="ret-streak">0</strong> 连胜</div>
-          <div>累计比赛总奖金: <strong id="ret-prize" style="color: var(--accent-blue);">$0</strong></div>
-          <div>退役资产结余: <strong id="ret-money" style="color: var(--accent-cyan);">$0</strong></div>
+      <!-- 2. 双打生涯 -->
+      <div class="card" style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); margin-bottom: 0; padding: 12px 16px;">
+        <div class="card-title" style="color: var(--accent-cyan); font-size: 0.95rem; margin-bottom: 6px; padding-bottom: 4px;">
+          👥 双打与搭档履历
+        </div>
+        <div style="font-size: 0.82rem; line-height: 1.8; color: #cbd5e1;">
+          <div style="display:flex; justify-content:space-between;"><span>最高双打排名:</span> <strong id="ret-doubles-best-rank" style="color:var(--accent-cyan);">#--</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>双打总战绩:</span> <span id="ret-doubles-record">0胜 0负 (0.0%)</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>双打冠军奖杯:</span> <strong id="ret-doubles-titles" style="color:var(--accent-gold);">0 🏆</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>合作过的搭档数:</span> <span id="ret-partners-count">0 位</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>决胜局抗压胜率:</span> <strong id="ret-decide-rate" style="color:#38bdf8;">0.0%</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>双打生涯最高成就:</span> <span id="ret-doubles-achievement" style="color:#fff;">未入围</span></div>
+        </div>
+      </div>
+
+      <!-- 3. 商业财富与代言 -->
+      <div class="card" style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); margin-bottom: 0; padding: 12px 16px;">
+        <div class="card-title" style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 6px; padding-bottom: 4px;">
+          💰 商业财富与赞助
+        </div>
+        <div style="font-size: 0.82rem; line-height: 1.8; color: #cbd5e1;">
+          <div style="display:flex; justify-content:space-between;"><span>累计赛事总奖金:</span> <strong id="ret-prize" style="color:#4ade80;">$0</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>退役时个人总资产:</span> <strong id="ret-money" style="color:var(--accent-gold);">$0</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>器材品牌代言:</span> <span id="ret-gear-sponsor">无签约</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>商业广告代言数:</span> <span id="ret-commercials-count">0 项</span></div>
+        </div>
+      </div>
+
+      <!-- 4. 身体健康与医疗 -->
+      <div class="card" style="background: rgba(0,0,0,0.3); border: 1px solid var(--border); margin-bottom: 0; padding: 12px 16px;">
+        <div class="card-title" style="color: #f43f5e; font-size: 0.95rem; margin-bottom: 6px; padding-bottom: 4px;">
+          🏥 身体损耗与伤病档案
+        </div>
+        <div style="font-size: 0.82rem; line-height: 1.8; color: #cbd5e1;">
+          <div style="display:flex; justify-content:space-between;"><span>生涯累计伤病:</span> <strong id="ret-injuries-total" style="color:#f87171;">0 次</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>重大结构性重伤:</span> <strong id="ret-injuries-severe" style="color:#ef4444;">0 次</strong></div>
+          <div style="display:flex; justify-content:space-between;"><span>退役时身体状态:</span> <span id="ret-final-health" style="color:#4ade80;">健康</span></div>
+          <div style="display:flex; justify-content:space-between;"><span>专属保障团队:</span> <span id="ret-final-staff">无教练 / 无体能师</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 荣誉奖牌陈列柜 (6格网格) -->
+    <div class="card" style="background: rgba(0,0,0,0.25); border: 1px solid var(--border); margin-bottom: 14px; padding: 12px 16px;">
+      <div class="card-title" style="color: var(--accent-gold); font-size: 0.95rem; margin-bottom: 8px; padding-bottom: 4px;">
+        🏆 终身荣誉与奖牌陈列柜 (Honor & Medals)
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; text-align: center;">
+        <div class="stat-box" style="padding: 8px 4px;">
+          <div class="stat-label" style="font-size:0.68rem;">三大赛金牌</div>
+          <div class="stat-val" id="ret-major-gold" style="font-size:1.15rem; color:var(--accent-gold);">0</div>
+        </div>
+        <div class="stat-box" style="padding: 8px 4px;">
+          <div class="stat-label" style="font-size:0.68rem;">大满贯/总决赛</div>
+          <div class="stat-val" id="ret-smash-finals" style="font-size:1.15rem; color:var(--accent);">0</div>
+        </div>
+        <div class="stat-box" style="padding: 8px 4px;">
+          <div class="stat-label" style="font-size:0.68rem;">冠军/球星赛</div>
+          <div class="stat-val" id="ret-champ-star" style="font-size:1.15rem; color:var(--accent-cyan);">0</div>
+        </div>
+        <div class="stat-box" style="padding: 8px 4px;">
+          <div class="stat-label" style="font-size:0.68rem;">支线/挑战赛</div>
+          <div class="stat-val" id="ret-feeder-cont" style="font-size:1.15rem; color:#a7f3d0;">0</div>
+        </div>
+        <div class="stat-box" style="padding: 8px 4px;">
+          <div class="stat-label" style="font-size:0.68rem;">生涯大赛奖牌</div>
+          <div class="stat-val" id="ret-medals-summary" style="font-size:0.85rem; color:#fff; margin-top:8px;">0/0/0</div>
+        </div>
+        <div class="stat-box" style="padding: 8px 4px; border-color:rgba(255,183,3,0.4);">
+          <div class="stat-label" style="font-size:0.68rem;">总冠军头衔</div>
+          <div class="stat-val" id="ret-total-titles" style="font-size:1.25rem; color:var(--accent-gold);">0 🏆</div>
         </div>
       </div>
     </div>
 
-    <div class="card" style="background: var(--bg-card-alt); margin-bottom: 16px;">
-      <div class="card-title" style="color: var(--accent);">🏆 荣誉陈列柜</div>
-      <div class="grid-4" style="text-align:center;">
-        <div class="stat-box"><div class="stat-label">三大赛金牌</div><div class="stat-val" id="ret-major" style="color:var(--accent-gold);">0</div></div>
-        <div class="stat-box"><div class="stat-label">大满贯头衔</div><div class="stat-val" id="ret-smash" style="color:var(--accent);">0</div></div>
-        <div class="stat-box"><div class="stat-label">冠军赛/球星赛</div><div class="stat-val" id="ret-champ-star">0</div></div>
-        <div class="stat-box"><div class="stat-label">总冠军头衔</div><div class="stat-val" id="ret-total-titles" style="color:var(--accent-gold);">0</div></div>
+    <!-- 国际乒联名人堂生涯评级与终局叙事 -->
+    <div class="card" style="background: linear-gradient(180deg, rgba(30, 41, 68, 0.7) 0%, rgba(13, 18, 33, 0.9) 100%); border: 1.5px solid var(--accent-gold); margin-bottom: 16px; padding: 14px 18px;">
+      <div class="card-title" style="font-size: 0.95rem; margin-bottom: 6px; padding-bottom: 4px;">
+        <span>🎖️ 国际乒联名人堂 · 生涯终局评定</span>
+        <span id="ret-eval-date" style="font-size: 0.72rem; color: var(--text-dim);">--</span>
+      </div>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 4px 0;">
+        <div style="flex: 1;">
+          <div id="ret-eval-title" style="font-size: 1.12rem; font-weight: 800; color: var(--accent-gold); margin-bottom: 6px;">--</div>
+          <div id="ret-eval-desc" style="font-size: 0.84rem; line-height: 1.7; color: #cbd5e1;">--</div>
+        </div>
+        <div id="ret-eval-tier" style="font-size: 2.2rem; font-weight: 900; color: var(--accent-gold); font-family: var(--font-display); text-shadow: 0 0 16px rgba(255,183,3,0.5); text-align: right; flex-shrink: 0; min-width: 100px;">
+          --
+        </div>
       </div>
     </div>
 
-    <div class="card" style="background: var(--bg-card-alt); margin-bottom: 20px;">
-      <div class="card-title">🎖️ 国际乒联名人堂生涯评级</div>
-      <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px;">
-        <div id="ret-eval-desc" style="font-size: 0.92rem; color: var(--text-dim); flex: 1; padding-right: 20px;">--</div>
-        <div id="ret-eval-tier" style="font-size: 2.2rem; font-weight: 900; color: var(--accent-gold); white-space: nowrap;">SSR</div>
-      </div>
-    </div>
-
+    <!-- 底部操作按钮 -->
     <div style="display: flex; gap: 12px;">
       <button class="btn-action" style="flex: 1;" onclick="exportSaveFile()">📤 导出完整退役档案 (.json)</button>
       <button class="btn-primary" style="flex: 1;" onclick="resetGame()">🔄 开启新球员生涯</button>
     </div>
+
   </div>
 </div>
 
@@ -5001,7 +5186,25 @@
 
     <div class="commentary-feed" id="live-commentary"></div>
 
-    <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 14px;" id="live-inprogress-bar">
+    <!-- 🏓 局内战术实时调整指令栏 (赛前/局中每回合后可随时切换) -->
+    <div style="background: rgba(0, 0, 0, 0.35); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; margin-top: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <span style="font-size: 0.76rem; color: var(--accent-gold); font-weight: 700;">🎯 战术指令 (回合间随时可换):</span>
+        <button id="btn-live-timeout" class="btn-action" style="padding: 2px 10px; font-size: 0.72rem; border-color: var(--accent-gold); color: var(--accent-gold); border-radius: 999px;" onclick="triggerLiveTimeout()">
+          ⏸️ 申请暂停 (1/1)
+        </button>
+      </div>
+      <div style="display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;" id="live-tactics-bar">
+        <button class="gear-filter-btn active" id="tac-neutral" onclick="setLiveTactic('neutral')">⚪ 常规相持</button>
+        <button class="gear-filter-btn" id="tac-smash" onclick="setLiveTactic('smash')">💥 搏杀发抢</button>
+        <button class="gear-filter-btn" id="tac-control" onclick="setLiveTactic('control')">🎯 摆短控网</button>
+        <button class="gear-filter-btn" id="tac-target_bh" onclick="setLiveTactic('target_bh')">⚡ 压反调正</button>
+        <button class="gear-filter-btn" id="tac-rally" onclick="setLiveTactic('rally')">🛡️ 退台对拉</button>
+      </div>
+    </div>
+
+    <!-- 操作控制栏 -->
+    <div style="display: flex; justify-content: space-between; gap: 10px; margin-top: 10px;" id="live-inprogress-bar">
       <button class="btn-action" id="btn-live-autoplay" onclick="toggleLiveAutoplay()">▶ 自动播放</button>
       <button class="btn-action" id="btn-live-skip" onclick="skipLiveMatch()">⚡ 跳过过程 (直接结算)</button>
       <button class="btn-primary" id="btn-live-next" onclick="stepLivePoint()">下一个回合 ➔</button>
@@ -5149,16 +5352,416 @@
   </div>
 </div>
 
+ <!-- 粉丝历史走势弹窗 -->
+<div id="fan-history-modal" style="display:none; position:fixed; inset:0; background:rgba(2,4,10,0.86); z-index:2800; justify-content:center; align-items:center; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);">
+  <div class="modal-box" style="max-width:700px; width:94%;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">
+      <h3 style="color:#c084fc; font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+        👥 历史粉丝增长与声望走势
+      </h3>
+      <button class="btn-action" onclick="closeFanHistoryModal()">关闭 ✕</button>
+    </div>
+
+    <!-- 当前/历史峰值摘要 -->
+    <div id="fan-history-summary" style="display:flex; justify-content:space-around; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:12px; padding:10px 14px; margin-bottom:12px; text-align:center; font-size:0.88rem;"></div>
+
+    <!-- 周期切换按钮 -->
+    <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+      <button class="btn-action fan-period-btn" data-period="10w" onclick="renderFanHistoryChart('10w')">近10周</button>
+      <button class="btn-action fan-period-btn" data-period="6m" onclick="renderFanHistoryChart('6m')">近6个月</button>
+      <button class="btn-action fan-period-btn" data-period="5y" onclick="renderFanHistoryChart('5y')">近5年</button>
+      <button class="btn-action fan-period-btn" data-period="career" onclick="renderFanHistoryChart('career')">总生涯</button>
+    </div>
+
+    <!-- 图表容器 -->
+    <div id="fan-history-chart-container" style="width:100%; overflow-x:auto; background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:12px; padding:8px;"></div>
+    <p style="font-size:0.78rem; color:var(--text-dim); margin-top:8px;">提示：鼠标悬停在圆点上可查看该周粉丝具体人数。曲线向上代表粉丝快速上涨。</p>
+  </div>
+</div>
+
+<!-- 资金历史起伏走势弹窗 -->
+<div id="money-history-modal" style="display:none; position:fixed; inset:0; background:rgba(2,4,10,0.86); z-index:2800; justify-content:center; align-items:center; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);">
+  <div class="modal-box" style="max-width:700px; width:94%;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:10px;">
+      <h3 style="color:var(--accent-gold); font-size:1.15rem; display:flex; align-items:center; gap:8px;">
+        🪙 职业生涯资金与资产流水走势
+      </h3>
+      <button class="btn-action" onclick="closeMoneyHistoryModal()">关闭 ✕</button>
+    </div>
+
+    <!-- 当前/历史最高资产摘要 -->
+    <div id="money-history-summary" style="display:flex; justify-content:space-around; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:12px; padding:10px 14px; margin-bottom:12px; text-align:center; font-size:0.88rem;"></div>
+
+    <!-- 周期切换按钮 -->
+    <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+      <button class="btn-action money-period-btn" data-period="10w" onclick="renderMoneyHistoryChart('10w')">近10周</button>
+      <button class="btn-action money-period-btn" data-period="6m" onclick="renderMoneyHistoryChart('6m')">近6个月</button>
+      <button class="btn-action money-period-btn" data-period="5y" onclick="renderMoneyHistoryChart('5y')">近5年</button>
+      <button class="btn-action money-period-btn" data-period="career" onclick="renderMoneyHistoryChart('career')">总生涯</button>
+    </div>
+
+    <!-- 图表容器 -->
+    <div id="money-history-chart-container" style="width:100%; overflow-x:auto; background:rgba(0,0,0,0.25); border:1px solid var(--border); border-radius:12px; padding:8px;"></div>
+    <p style="font-size:0.78rem; color:var(--text-dim); margin-top:8px;">提示：鼠标悬停在圆点上可查看该周的可用资金总额。</p>
+  </div>
+</div> 
+
 <script>
 
+
+// ==================== 赞助商海量数据分页与筛选引擎 ====================
 let currentSponsorCategory = 'gear'; // 'gear' | 'commercial'
+let currentSponsorStatus = 'all';    // 'all' | 'eligible' | 'signed' | 'cooldown'
+let sponsorSearchKeyword = '';
+let sponsorCurrentPage = 1;
+const SPONSOR_PAGE_SIZE = 18;        // 一页固定展示 15 个 (3 排 × 5 列)
+
+// 1. 切换状态筛选 (全部 / 可签约 / 已签约 / 冷却中)
+function filterSponsorStatus(status, btn) {
+  currentSponsorStatus = status;
+  sponsorCurrentPage = 1;
+  document.querySelectorAll('#sponsor-filter-group .gear-filter-btn').forEach(el => el.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderSponsorsCompact(gameState.worldRanking.findIndex(x => x.isUser) + 1);
+}
+
+// 2. 关键词即时搜索
+function handleSponsorSearch(val) {
+  sponsorSearchKeyword = (val || '').trim().toLowerCase();
+  sponsorCurrentPage = 1;
+  renderSponsorsCompact(gameState.worldRanking.findIndex(x => x.isUser) + 1);
+}
+
+// 3. 翻页动作
+function changeSponsorPage(delta) {
+  sponsorCurrentPage += delta;
+  renderSponsorsCompact(gameState.worldRanking.findIndex(x => x.isUser) + 1);
+}
+
+// 4. 切换主分类标签
+function switchSponsorCategory(cat, btn) {
+  currentSponsorCategory = cat;
+  currentSponsorStatus = 'all';
+  sponsorSearchKeyword = '';
+  sponsorCurrentPage = 1;
+
+  const searchInput = document.getElementById('inp-sponsor-search');
+  if (searchInput) searchInput.value = '';
+
+  document.getElementById('btn-sp-tab-gear')?.classList.toggle('active-gear-type', cat === 'gear');
+  document.getElementById('btn-sp-tab-comm')?.classList.toggle('active-gear-type', cat === 'commercial');
+
+  document.querySelectorAll('#sponsor-filter-group .gear-filter-btn').forEach((el, idx) => {
+    el.classList.toggle('active', idx === 0);
+  });
+
+  renderSponsorsCompact(gameState.worldRanking.findIndex(x => x.isUser) + 1);
+}
+
+// 5. 核心渲染函数（支持数百个条目的多重过滤与分页切片）
+function renderSponsorsCompact(currentRank) {
+  ensurePlayerSponsors();
+  const container = document.getElementById('sponsors-container');
+  const pageContainer = document.getElementById('sponsors-pagination');
+  if (!container) return;
+
+  const rawList = (typeof SPONSORS_DATABASE !== 'undefined' ? SPONSORS_DATABASE[currentSponsorCategory] : []) || [];
+  const p = gameState.player;
+  const pFans = p.fans || 0;
+  if (!p.sponsorCooldowns) p.sponsorCooldowns = {};
+
+  const curAbs = (typeof absWeekIndex === 'function') ? absWeekIndex(p.week, p.year) : (p.year * 52 + p.week);
+
+  // A. 预处理各赞助商的当前状态
+  const processedList = rawList.map(s => {
+    let activeContract = null;
+    if (s.type === 'gear') {
+      activeContract = (p.sponsors.gear && p.sponsors.gear.id === s.id) ? p.sponsors.gear : null;
+    } else {
+      activeContract = (p.sponsors.commercials || []).find(c => c.id === s.id) || null;
+    }
+
+    const isSigned = Boolean(activeContract);
+    const meetsRank = currentRank <= s.rankReq;
+    const meetsFan = !s.fanReq || (pFans >= s.fanReq);
+    const canNegotiate = meetsRank && meetsFan && !isSigned;
+
+    let isCooling = false;
+    let coolWeeksLeft = 0;
+    const coolData = p.sponsorCooldowns[s.id];
+    if (coolData) {
+      const coolAbs = (typeof absWeekIndex === 'function') ? absWeekIndex(coolData.week, coolData.year) : (coolData.year * 52 + coolData.week);
+      if (curAbs < coolAbs) {
+        isCooling = true;
+        coolWeeksLeft = coolAbs - curAbs;
+      }
+    }
+
+    return {
+      ...s,
+      isSigned,
+      canNegotiate,
+      isCooling,
+      coolWeeksLeft,
+      activeContract
+    };
+  });
+
+  // B. 状态与关键词多重过滤
+  const filtered = processedList.filter(item => {
+    // 搜索关键词
+    if (sponsorSearchKeyword && !item.name.toLowerCase().includes(sponsorSearchKeyword)) {
+      return false;
+    }
+    // 状态过滤
+    if (currentSponsorStatus === 'eligible') return item.canNegotiate && !item.isCooling;
+    if (currentSponsorStatus === 'signed') return item.isSigned;
+    if (currentSponsorStatus === 'cooldown') return item.isCooling;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="grid-column: 1/-1; color: var(--text-dim); font-size: 0.85rem; padding: 30px; text-align:center;">未找到符合条件的赞助商</div>`;
+    if (pageContainer) pageContainer.innerHTML = '';
+    return;
+  }
+
+  // C. 分页切片计算
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / SPONSOR_PAGE_SIZE);
+  sponsorCurrentPage = Math.max(1, Math.min(sponsorCurrentPage, totalPages));
+
+  const startIndex = (sponsorCurrentPage - 1) * SPONSOR_PAGE_SIZE;
+  const pageItems = filtered.slice(startIndex, startIndex + SPONSOR_PAGE_SIZE);
+
+  // D. 渲染当页卡片
+  container.innerHTML = pageItems.map(s => {
+    let statusHtml = '';
+    if (s.isSigned) {
+      statusHtml = `
+        <div style="text-align:right;">
+          <span class="badge badge-gold" style="font-size:0.65rem; padding:1px 5px;">已签 $${s.activeContract.weeklyPay}</span>
+          <div style="font-size:0.65rem; color:var(--accent-cyan); margin-top:1px;">余${s.activeContract.weeksLeft}周</div>
+        </div>
+      `;
+    } else if (s.isCooling) {
+      statusHtml = `
+        <button class="btn-action" style="padding:2px 6px; font-size:0.68rem; color:var(--text-dim); opacity:0.65; cursor:not-allowed;" title="还剩 ${s.coolWeeksLeft} 周">
+          ⏳ ${s.coolWeeksLeft}周后
+        </button>
+      `;
+    } else if (s.canNegotiate) {
+      statusHtml = `<button class="btn-gold" style="padding:2px 8px; font-size:0.7rem;" onclick="openNegotiateModal('${s.id}', '${s.type}')">谈判</button>`;
+    } else {
+      let lockReason = currentRank > s.rankReq ? `#${s.rankReq}` : `${(s.fanReq/10000).toFixed(0)}w粉`;
+      statusHtml = `<span style="font-size:0.68rem; color:var(--text-dim);">${lockReason}入围</span>`;
+    }
+
+    return `
+      <div class="sponsor-card-mini ${s.isSigned ? 'signed' : ''}">
+        <div style="min-width:0; flex:1;">
+          <div class="sponsor-mini-title">${s.name}</div>
+          <div class="sponsor-mini-desc">
+            周薪: <strong style="color:var(--accent-cyan);">$${s.minPay}~$${s.maxPay}</strong>
+          </div>
+        </div>
+        <div style="flex-shrink:0;">${statusHtml}</div>
+      </div>
+    `;
+  }).join('');
+
+  // E. 渲染分页控制器
+  if (pageContainer) {
+    if (totalPages <= 1) {
+      pageContainer.innerHTML = `<span class="news-page-info" style="font-size:0.75rem;">共 ${totalItems} 家品牌 (全部展示)</span>`;
+    } else {
+      pageContainer.innerHTML = `
+        <button class="news-page-btn" style="padding:3px 10px; font-size:0.72rem;" ${sponsorCurrentPage <= 1 ? 'disabled' : ''} onclick="changeSponsorPage(-1)">◀ 上一页</button>
+        <span class="news-page-info" style="font-size:0.75rem;">第 ${sponsorCurrentPage} / ${totalPages} 页 (共 ${totalItems} 家品牌)</span>
+        <button class="news-page-btn" style="padding:3px 10px; font-size:0.72rem;" ${sponsorCurrentPage >= totalPages ? 'disabled' : ''} onclick="changeSponsorPage(1)">下一页 ▶</button>
+      `;
+    }
+  }
+}
+
 let currentNegotiatingSponsor = null;
 let selectedContractTerm = 26; // 默认 26 周 (半年)
 
 // ==================== 器材库与品牌筛选系统 ====================
-// ==================== 器材库与品牌筛选系统 ====================
+/* ==================== 专业器材装备库分页与多维筛选引擎 ==================== */
 let currentGearType = 'blade';
 let currentGearBrand = 'all';
+let currentGearTier = 'all';
+let gearSearchKeyword = '';
+let gearCurrentPage = 1;
+const GEAR_PAGE_SIZE = 12; // 每页固定展示 15 款 (3 排 × 5 列)
+
+// 1. 切换大品类 (底板/正手/反手/球鞋)
+function changeGearCategory(type, btn) {
+  currentGearType = type;
+  currentGearBrand = 'all';
+  currentGearTier = 'all';
+  gearSearchKeyword = '';
+  gearCurrentPage = 1;
+
+  const searchInput = document.getElementById('inp-gear-search');
+  if (searchInput) searchInput.value = '';
+
+  document.querySelectorAll('#gear-category-group .btn-action').forEach(el => el.classList.remove('active-gear-type'));
+  if (btn) btn.classList.add('active-gear-type');
+
+  document.querySelectorAll('#gear-category-group .gear-filter-btn').forEach((el, idx) => {
+    el.classList.toggle('active', idx === 0);
+  });
+
+  renderBrandFilterButtons();
+  renderGearList();
+}
+
+// 2. 切换品牌筛选
+function filterGearBrand(brand, btn) {
+  currentGearBrand = brand;
+  gearCurrentPage = 1;
+
+  document.querySelectorAll('#gear-brand-filters .gear-filter-btn').forEach(el => el.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  renderGearList();
+}
+
+// 3. 切换阶位筛选 (T1~T4)
+function filterGearTier(tier, btn) {
+  currentGearTier = tier;
+  gearCurrentPage = 1;
+
+  document.querySelectorAll('#gear-category-group .gear-filter-btn').forEach(el => el.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  renderGearList();
+}
+
+// 4. 即时搜索关键词
+function handleGearSearch(val) {
+  gearSearchKeyword = (val || '').trim().toLowerCase();
+  gearCurrentPage = 1;
+  renderGearList();
+}
+
+// 5. 翻页动作
+function changeGearPage(delta) {
+  gearCurrentPage += delta;
+  renderGearList();
+}
+
+// 6. 渲染品牌胶囊按钮
+function renderBrandFilterButtons() {
+  const filterBar = document.getElementById('gear-brand-filters');
+  if (!filterBar || typeof GEAR_DATABASE === 'undefined') return;
+
+  const rawList = GEAR_DATABASE[currentGearType] || [];
+  const brandsSet = new Set();
+  rawList.forEach(item => brandsSet.add(extractGearBrand(item)));
+
+  let html = `<button class="gear-filter-btn ${currentGearBrand === 'all' ? 'active' : ''}" onclick="filterGearBrand('all', this)">全部品牌 (${rawList.length})</button>`;
+  
+  brandsSet.forEach(b => {
+    const count = rawList.filter(item => extractGearBrand(item) === b).length;
+    html += `<button class="gear-filter-btn ${currentGearBrand === b ? 'active' : ''}" onclick="filterGearBrand('${b}', this)">${b} (${count})</button>`;
+  });
+
+  filterBar.innerHTML = html;
+}
+
+// 7. 渲染器材卡片列表（支持 品类 + 品牌 + 阶位 + 搜索关键词 + 分页切片）
+function renderGearList() {
+  const container = document.getElementById('gear-container');
+  const pageContainer = document.getElementById('gear-pagination');
+  if (!container || typeof GEAR_DATABASE === 'undefined') return;
+
+  const rawList = GEAR_DATABASE[currentGearType] || [];
+
+  // 四重过滤计算
+  const filtered = rawList.filter(item => {
+    const matchBrand = (currentGearBrand === 'all') || (extractGearBrand(item) === currentGearBrand);
+    const matchTier = (currentGearTier === 'all') || (String(item.tier) === String(currentGearTier));
+    const matchSearch = !gearSearchKeyword || item.name.toLowerCase().includes(gearSearchKeyword);
+    return matchBrand && matchTier && matchSearch;
+  });
+
+  const tierBadges = {
+    1: { name: '入门', cls: 'badge-feed' },
+    2: { name: '进阶', cls: 'badge-cont' },
+    3: { name: '专业', cls: 'badge-star' },
+    4: { name: '国手', cls: 'badge-gold' }
+  };
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="grid-column: 1/-1; color:var(--text-dim); font-size:0.85rem; padding:30px; text-align:center;">未找到符合条件的器材</div>`;
+    if (pageContainer) pageContainer.innerHTML = '';
+    return;
+  }
+
+  // 分页切片
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / GEAR_PAGE_SIZE);
+  gearCurrentPage = Math.max(1, Math.min(gearCurrentPage, totalPages));
+
+  const startIndex = (gearCurrentPage - 1) * GEAR_PAGE_SIZE;
+  const pageItems = filtered.slice(startIndex, startIndex + GEAR_PAGE_SIZE);
+
+  // 渲染当页 15 款器材
+  container.innerHTML = pageItems.map(item => {
+    const isEquipped = gameState.player.gear[currentGearType] === item.id;
+    const isOwned = (gameState.player.ownedGear[currentGearType] || []).includes(item.id);
+    const tierInfo = tierBadges[item.tier] || { name: `T${item.tier}`, cls: 'badge' };
+    const brandName = extractGearBrand(item);
+
+    let priceTag = '';
+    if (isEquipped) {
+      priceTag = '✓ 已装备';
+    } else if (isOwned) {
+      priceTag = '点击换装';
+    } else if (item.price === 0 || item.price === '0') {
+      priceTag = '免费领取';
+    } else {
+      priceTag = `$${Number(item.price).toLocaleString()}`;
+    }
+
+    return `
+      <div class="gear-card-compact ${isEquipped ? 'equipped' : ''}" onclick="handleGearClick('${currentGearType}', '${item.id}')">
+        <div class="gear-header">
+          <span class="gear-title" title="${item.name}">${item.name}</span>
+          <span class="badge ${tierInfo.cls}" style="font-size:0.65rem; padding:1px 5px; flex-shrink:0;">${tierInfo.name}</span>
+        </div>
+        <div class="gear-stat-row">
+          ${item.speed ? `<span>速<strong>+${item.speed}</strong></span>` : ''}
+          ${item.spin ? `<span>旋<strong>+${item.spin}</strong></span>` : ''}
+          ${item.control ? `<span>控<strong>+${item.control}</strong></span>` : ''}
+          ${item.footwork ? `<span>步<strong>+${item.footwork}</strong></span>` : ''}
+        </div>
+        <div class="gear-footer">
+          <span style="color:var(--text-dim);">${brandName}</span>
+          <span style="font-weight:700; color:${isEquipped ? 'var(--accent-gold)' : (isOwned ? 'var(--accent-cyan)' : 'var(--accent)')};">
+            ${priceTag}
+          </span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // 渲染底部翻页器
+  if (pageContainer) {
+    if (totalPages <= 1) {
+      pageContainer.innerHTML = `<span class="news-page-info" style="font-size:0.75rem;">共 ${totalItems} 款器材 (全部展示)</span>`;
+    } else {
+      pageContainer.innerHTML = `
+        <button class="news-page-btn" style="padding:3px 10px; font-size:0.72rem;" ${gearCurrentPage <= 1 ? 'disabled' : ''} onclick="changeGearPage(-1)">◀ 上一页</button>
+        <span class="news-page-info" style="font-size:0.75rem;">第 ${gearCurrentPage} / ${totalPages} 页 (共 ${totalItems} 款器材)</span>
+        <button class="news-page-btn" style="padding:3px 10px; font-size:0.72rem;" ${gearCurrentPage >= totalPages ? 'disabled' : ''} onclick="changeGearPage(1)">下一页 ▶</button>
+      `;
+    }
+  }
+}
 
 // 6. 双排赞助商展示与签约
 function checkSponsors(currentRank) {
@@ -6094,7 +6697,7 @@ let confirmCallback = null;
    超过 52 周（即一年）便会从总积分中"过期"移除。以下工具函数为全局唯一的加分入口，
    所有选手（含玩家与 AI）的积分变动都必须经过 awardPoints()，
    并在每次推进周次后调用 recomputeAllPoints() 重新裁剪 52 周窗口之外的旧积分。 */
-const RANKING_WINDOW_WEEKS = 52;
+
 
 // 记录玩家当前世界排名快照，用于"历史世界排名走势"弹窗绘图
 function recordRankHistoryPoint() {
@@ -7262,73 +7865,116 @@ function getAIYearlyPowerDelta(age) {
   }
 }
 
+/* ==================== 平滑多维 AI 退役与新星迭代引擎 ==================== */
 function handleSeasonAIAgingAndRetirements() {
-  let retiredPlayers = [];
+  let retiredPlayerNames = [];
+  if (!gameState.retiredPlayers) gameState.retiredPlayers = [];
 
-  gameState.worldRanking.forEach((pl) => {
-    if (!pl.isUser) {
-      pl.age++;
-      let retireChance = pl.age >= 39 ? 0.85 : (pl.age >= 36 ? 0.45 : 0);
+  gameState.worldRanking.forEach((pl, idx) => {
+    if (pl.isUser) return;
 
-      if (Math.random() < retireChance) {
-        retiredPlayers.push(`${pl.name} (${pl.age}岁)`);
+    // 1. 年龄自然增长 1 岁
+    pl.age = (pl.age || 20) + 1;
+    let curRank = idx + 1;
 
-        // 存档老将档案，以便 H2H 仍可查询
-        if (!gameState.retiredPlayers) gameState.retiredPlayers = [];
-        gameState.retiredPlayers.push({
-          name: pl.name,
-          country: pl.country,
-          age: pl.age,
-          style: pl.style,
-          points: pl.points,
-          careerWins: pl.careerWins || 0,
-          careerLosses: pl.careerLosses || 0,
-          recentMatches: (pl.recentMatches || []).slice(),
-          careerMedals: (pl.careerMedals || []).slice(),
-          isRetired: true,
-          retiredYear: gameState.player.year
-        });
+    // 2. 真实阶梯式年龄退役概率计算
+    let retireChance = 0;
+    if (pl.age >= 40) {
+      retireChance = 0.90; // 40岁以上极高概率退役
+    } else if (pl.age >= 38) {
+      retireChance = 0.65; // 38-39岁老将高概率退役
+    } else if (pl.age >= 35) {
+      retireChance = 0.35; // 35-37岁老将正常退役期
+    } else if (pl.age >= 32) {
+      retireChance = 0.12; // 32-34岁黄金晚期少量退役
+    } else if (pl.age >= 29) {
+      retireChance = 0.03; // 29-31岁极低概率自愿退役
+    }
 
-        // 核心修改：退役后有一定概率由任意国家的新秀顶替该位置，否则沿用原国籍
-        const ROOKIE_COUNTRY_SWAP_CHANCE = 0.3; // 👈 可调整：30% 概率替补新秀来自随机国家
-        let rookieCountry = (Math.random() < ROOKIE_COUNTRY_SWAP_CHANCE)
-          ? COUNTRIES_GLOBAL[Math.floor(Math.random() * COUNTRIES_GLOBAL.length)]
-          : (pl.country || COUNTRIES_GLOBAL[Math.floor(Math.random() * COUNTRIES_GLOBAL.length)]);
-        // 找到这部分代码：
-        pl.country = rookieCountry;
-        pl.name = generateUniqueRookieName(rookieCountry);
+    // 3. 附加影响因素：长期重度伤病大幅增加提前退役概率
+    const hasSevereInjury = pl.injury && (pl.injury.includes('重度') || pl.injury.includes('severe') || pl.injury === '重度伤病');
+    if (hasSevereInjury && pl.age >= 28) {
+      retireChance += 0.25; // 28岁以上受重伤易提前退役
+    }
 
-        // --- 在此处添加头像分配逻辑 ---
-        pl.avatar = getRandomAvatarByCountry(rookieCountry);
+    // 4. 附加影响因素：大龄且世界排名严重落后（跌出 350 名）
+    if (pl.age >= 31 && curRank > 350) {
+      retireChance += 0.15;
+    }
 
-        pl.age = 16 + Math.floor(Math.random() * 7);
-        pl.debutYear = gameState.player.year;
-        let rookiePts = 350 + Math.floor(Math.random() * 300);
-        pl.pointsHistory = [{ amt: rookiePts, w: gameState.player.week, y: gameState.player.year }];
-        pl.points = rookiePts;
-        pl.basePow = 62 + Math.floor(Math.random() * 15);
-        pl.injury = "健康";
-        pl.recentMatches = [];
-        pl.careerWins = 0;
-        pl.careerLosses = 0;
-        pl.basePowTrend = 0;
-      } else {
-        let oldPow = pl.basePow || 60;
-        let delta = getAIYearlyPowerDelta(pl.age);
-        if (pl.injury && pl.injury !== "健康") delta -= 0.4;
-        pl.basePow = Math.max(38, Math.min(99, +(oldPow + delta).toFixed(1)));
-        pl.basePowTrend = +(pl.basePow - oldPow).toFixed(1);
+    // 5. 执行退役判定
+    if (Math.random() < retireChance) {
+      retiredPlayerNames.push(`${pl.name} (${pl.age}岁)`);
+
+      // 提取生涯奖牌快照
+      let medals = (typeof getPlayerMedalsList === 'function') ? getPlayerMedalsList(pl.name) : (pl.careerMedals || []);
+
+      // 永久归档入名人堂档案
+      gameState.retiredPlayers.unshift({
+        name: pl.name,
+        country: pl.country,
+        age: pl.age,
+        style: pl.style || '两面弧圈型',
+        points: pl.points || 0,
+        careerWins: pl.careerWins || 0,
+        careerLosses: pl.careerLosses || 0,
+        recentMatches: (pl.recentMatches || []).slice(0, 5),
+        careerMedals: (medals || []).slice(),
+        isRetired: true,
+        retiredYear: gameState.player.year
+      });
+
+      // 6. 新星迭代：生成具有合理年龄梯队的新秀替补（17~23 岁均有分布）
+      const ROOKIE_COUNTRY_SWAP_CHANCE = 0.35;
+      let rookieCountry = (Math.random() < ROOKIE_COUNTRY_SWAP_CHANCE)
+        ? COUNTRIES_GLOBAL[Math.floor(Math.random() * COUNTRIES_GLOBAL.length)]
+        : (pl.country || COUNTRIES_GLOBAL[Math.floor(Math.random() * COUNTRIES_GLOBAL.length)]);
+
+      let newRookieName = generateUniqueRookieName(rookieCountry);
+
+      pl.country = rookieCountry;
+      pl.name = newRookieName;
+      pl.avatar = (typeof getRandomAvatarByCountry === 'function') ? getRandomAvatarByCountry(rookieCountry) : null;
+      // 年龄梯队分布更自然（17~23岁）
+      pl.age = 17 + Math.floor(Math.random() * 7);
+      pl.debutYear = gameState.player.year;
+      
+      let rookiePts = 200 + Math.floor(Math.random() * 350);
+      pl.pointsHistory = [{ amt: rookiePts, w: gameState.player.week, y: gameState.player.year }];
+      pl.points = rookiePts;
+      pl.basePow = 52 + Math.floor(Math.random() * 22);
+      pl.injury = "健康";
+      pl.recentMatches = [];
+      pl.careerWins = 0;
+      pl.careerLosses = 0;
+      pl.basePowTrend = 0;
+      
+      if (typeof assignAIGear === 'function') {
+        assignAIGear(pl, curRank);
+      }
+      pl.stats = (typeof generateAI12Stats === 'function') ? generateAI12Stats(pl.basePow, pl.style) : null;
+    } else {
+      // 未退役选手的年度战力自然演变（年轻成长，老将下滑）
+      let oldPow = pl.basePow || 60;
+      let delta = (typeof getAIYearlyPowerDelta === 'function') ? getAIYearlyPowerDelta(pl.age) : 0;
+      if (pl.injury && pl.injury !== "健康") delta -= 0.5;
+      
+      pl.basePow = Math.max(38, Math.min(99, +(oldPow + delta).toFixed(1)));
+      pl.basePowTrend = +(pl.basePow - oldPow).toFixed(1);
+      if (typeof generateAI12Stats === 'function') {
         pl.stats = generateAI12Stats(pl.basePow, pl.style);
-        checkAIGearUpgrades();
       }
     }
   });
 
-  let msg = `🎉 迈入 ${gameState.player.year} 新赛季！你的年龄成长至 ${gameState.player.age} 岁！\n`;
-  if (retiredPlayers.length > 0) {
-    msg += `\n🎖️ 传奇谢幕！以下老将宣布退役：\n${retiredPlayers.slice(0, 5).join('、')}\n新一代青年才俊已进入世界巡回赛！`;
+  // 7. 新闻/弹窗通报本年退役名单
+  let msg = `🎉 迈入 ${gameState.player.year} 新赛季！你的年龄增长至 ${gameState.player.age} 岁！\n`;
+  if (retiredPlayerNames.length > 0) {
+    msg += `\n🎖️ 【老将谢幕】本赛季共有 ${retiredPlayerNames.length} 位选手宣布退役：\n` +
+           `${retiredPlayerNames.slice(0, 6).join('、')}${retiredPlayerNames.length > 6 ? ' 等' : ''}\n` +
+           `新一代青年才俊已完成资格选拔并递补进入世界巡回赛！`;
   }
-  showAlert(msg);
+  showAlert(msg, "赛季更迭", "📅");
 }
 
 
@@ -7650,6 +8296,16 @@ function loadGame(showAlert = false) {
     if (data) {
       gameState = JSON.parse(data);
       if (!gameState.h2hData) gameState.h2hData = {};
+      if (gameState.player.fans === undefined) gameState.player.fans = 200;
+      if (gameState.player.fans === undefined) gameState.player.fans = 200;
+      if (!Array.isArray(gameState.player.fanHistory)) {
+        gameState.player.fanHistory = [];
+        recordFanHistoryPoint();
+      }
+      if (!Array.isArray(gameState.player.moneyHistory)) {
+        gameState.player.moneyHistory = [];
+        recordMoneyHistoryPoint();
+      }
       if (!gameState.retiredPlayers) gameState.retiredPlayers = [];
       // ===== 双打数据结构兼容性修补 =====
       if (!gameState.doublesRanking) gameState.doublesRanking = [];
@@ -7730,7 +8386,9 @@ function loadGame(showAlert = false) {
 /* ==================== 全局支持点击遮罩外部关闭弹窗 ==================== */
 function initModalBackdropDismiss() {
   const modalDismissMap = {
-    'player-attributes-modal': closePlayerAttributesModal, // 👈 图一：十二维能力雷达
+    'player-attributes-modal': closePlayerAttributesModal,
+    'fan-history-modal': closeFanHistoryModal,      // 👈 新增：粉丝历史弹窗
+    'money-history-modal': closeMoneyHistoryModal, // 👈 图一：十二维能力雷达
     'sponsor-negotiate-modal': closeNegotiateModal,         // 👈 图二：赞助合同谈判
     'player-gear-modal': closePlayerGearModal,              // 👈 选手装备详情弹窗
     'discipline-select-modal': closeDisciplineSelectModal,
@@ -7787,6 +8445,7 @@ function enableHorizontalWheelScroll(el) {
 function initHorizontalWheelAreas() {
   enableHorizontalWheelScroll(document.getElementById('sponsors-container'));
   enableHorizontalWheelScroll(document.getElementById('gear-container'));
+  enableHorizontalWheelScroll(document.getElementById('gear-brand-filters')); // 👈 新增：让鼠标滚轮在品牌栏也能左右滑动
 }
 
 // 统一唯一的全局启动入口 (确保存档键名完全一致，解决刷新重置与新建角色无效)

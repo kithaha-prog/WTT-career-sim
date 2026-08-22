@@ -1,6 +1,17 @@
 /* ==================== 真实局内比分生成与模拟器 ==================== */
 function simulateMatchScore(p1, p2, targetGames = 3) {
-  let diff = (p1?.power || 60) - (p2?.power || 60);
+  let pow1 = p1?.power || 60;
+  let pow2 = p2?.power || 60;
+
+  // 接入 5 点内打法克制计算
+  if (typeof getStyleAdvantage === 'function' && p1?.style && p2?.style) {
+    const adv1 = getStyleAdvantage(p1.style, p2.style, pow1, pow2);
+    const adv2 = getStyleAdvantage(p2.style, p1.style, pow2, pow1);
+    pow1 += (adv1.bonus || 0);
+    pow2 += (adv2.bonus || 0);
+  }
+
+  let diff = pow1 - pow2;
   let p1WinRate = setWinProb(diff);
   let p1G = 0, p2G = 0;
   let details = [];
@@ -16,7 +27,7 @@ function simulateMatchScore(p1, p2, targetGames = 3) {
     } else if (roll < 0.70) {
       loserPts = Math.floor(7 + Math.random() * 3); // 11-7 ~ 11-9
     } else {
-      let deuce = 10 + Math.floor(Math.random() * 4); // 12-10, 13-11 等加分局
+      let deuce = 10 + Math.floor(Math.random() * 4);
       loserPts = deuce;
       let winnerPts = deuce + 2;
       details.push(p1WonGame ? `${winnerPts}-${loserPts}` : `${loserPts}-${winnerPts}`);
@@ -1263,6 +1274,16 @@ function finishSubTournamentRound(tour, playerWonRound) {
       tour.type
     );
 
+    // 冠军按赛事级别爆发性涨粉
+    let tourFanGain = 3000;
+    if (tour.type === "Olympic" || tour.type === "WTTC") tourFanGain = 180000;
+    else if (tour.type === "World Cup" || tour.type === "Grand Smash") tourFanGain = 90000;
+    else if (tour.type === "Finals" || tour.type === "Champions") tourFanGain = 35000;
+    else if (tour.type === "Star Contender") tourFanGain = 12000;
+    else if (tour.type === "Contender") tourFanGain = 6000;
+    
+    addPlayerFans(tourFanGain, "赛事夺冠");
+
     // 奥运铜牌战奖金与积分
     if (tour.bronzeMatch && !tour.bronzeMatch.winner) {
       let bm = tour.bronzeMatch;
@@ -1313,6 +1334,7 @@ function finishSubTournamentRound(tour, playerWonRound) {
     }
 
     // 双打决赛结算
+    // 双打决赛结算
     if (isDoubles) {
       let partner = gameState.playerDoubles?.currentPartner;
       let userPair = gameState.doublesRanking?.find(p => p.isUserPair);
@@ -1331,18 +1353,38 @@ function finishSubTournamentRound(tour, playerWonRound) {
         recordCareerMedal(gameState.player.name, 'G', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
         if (partner) recordCareerMedal(partner.name, 'G', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
         
+        let userObj = gameState.worldRanking.find(x => x.isUser);
+        let partnerObj = gameState.worldRanking.find(x => x.name === partner?.name);
+        recordRecentMatchForPlayer(userObj, tour.name, tour.type, "🏆 冠军", champPts, "双打");
+        if (partnerObj) recordRecentMatchForPlayer(partnerObj, tour.name, tour.type, "🏆 冠军", champPts, "双打");
+
         accumulateDoublesTrophyStats(tour.type);
+
+        // 夺冠按赛事级别爆发性吸粉
+        let tourFanGain = 3000;
+        if (tour.type === "Olympic" || tour.type === "WTTC") tourFanGain = 180000;
+        else if (tour.type === "World Cup" || tour.type === "Grand Smash") tourFanGain = 80000;
+        else if (tour.type === "Finals" || tour.type === "Champions") tourFanGain = 35000;
+        else if (tour.type === "Star Contender") tourFanGain = 12000;
+        else if (tour.type === "Contender") tourFanGain = 5000;
+        
+        addPlayerFans(tourFanGain, "赛事夺冠");
+
       } else {
         let champPair = gameState.doublesRanking?.find(p => p.name === champ.name);
         if (champPair) {
           awardDoublesPoints(champPair, champPts);
           [champPair.player1?.name, champPair.player2?.name].forEach(pName => {
-            if (pName) recordCareerMedal(pName, 'G', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
+            if (pName) {
+              recordCareerMedal(pName, 'G', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
+              // 👈 【新增这行】为 AI 双打搭档补写战绩履历
+              let plObj = gameState.worldRanking.find(x => x.name === pName);
+              if (plObj) recordRecentMatchForPlayer(plObj, tour.name, tour.type, "🏆 冠军", champPts, "双打");
+            }
           });
         }
       }
 
-      // 👈 双打亚军发放奖金
       if (runnerUp.isUser) {
         let runnerPrize = calculateRoundPrize(tour.prizeAward, tour.drawSize, tour.currentRound - 1, tour.phase, true);
         gameState.player.money += runnerPrize;
@@ -1351,6 +1393,12 @@ function finishSubTournamentRound(tour, playerWonRound) {
         awardDoublesPoints(userPair, runnerUpPts);
         recordCareerMedal(gameState.player.name, 'S', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
         if (partner) recordCareerMedal(partner.name, 'S', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
+        
+        let userObj = gameState.worldRanking.find(x => x.isUser);
+        let partnerObj = gameState.worldRanking.find(x => x.name === partner?.name);
+        recordRecentMatchForPlayer(userObj, tour.name, tour.type, "🥈 亚军", runnerUpPts, "双打");
+        if (partnerObj) recordRecentMatchForPlayer(partnerObj, tour.name, tour.type, "🥈 亚军", runnerUpPts, "双打");
+
         tour.isUserKnockedOut = true;
         showAlert(`🥈 双打荣获亚军：获得 +${runnerUpPts} 双打积分，奖金 +$${runnerPrize.toLocaleString()}！`, "赛事结算", "🥈");
       } else {
@@ -1358,11 +1406,17 @@ function finishSubTournamentRound(tour, playerWonRound) {
         if (runnerPair) {
           awardDoublesPoints(runnerPair, runnerUpPts);
           [runnerPair.player1?.name, runnerPair.player2?.name].forEach(pName => {
-            if (pName) recordCareerMedal(pName, 'S', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
+            if (pName) {
+              recordCareerMedal(pName, 'S', gameState.player.year, tour.week, tour.name, tour.type, "男子双打");
+              // 👈 【新增这行】为 AI 双打亚军搭档补写战绩履历
+              let plObj = gameState.worldRanking.find(x => x.name === pName);
+              if (plObj) recordRecentMatchForPlayer(plObj, tour.name, tour.type, "🥈 亚军", runnerUpPts, "双打");
+            }
           });
         }
       }
-    } 
+    }
+    // 单打决赛结算
     // 单打决赛结算
     else {
       if (champ.isUser) {
@@ -1371,8 +1425,9 @@ function finishSubTournamentRound(tour, playerWonRound) {
         gameState.stats.totalPrizeWon = (gameState.stats.totalPrizeWon || 0) + (tour.prizeAward || 0);
         gameState.stats.titles++;
         recordCareerMedal(gameState.player.name, 'G', gameState.player.year, tour.week, tour.name, tour.type, "男子单打");
+        recordRecentMatchForPlayer(gameState.worldRanking.find(x => x.isUser), tour.name, tour.type, "🏆 冠军", champPts, "单打");
         
-        // 👈 同步写入奖杯明细记录库
+        // 同步写入奖杯明细记录库
         ensureTrophyRecords();
         let cat = "feeder";
         if (tour.type === "Olympic") cat = "olympic";
@@ -1400,10 +1455,12 @@ function finishSubTournamentRound(tour, playerWonRound) {
         if (champObj) {
           awardPoints(champObj, champPts);
           recordCareerMedal(champObj.name, 'G', gameState.player.year, tour.week, tour.name, tour.type, "男子单打");
+          // 👈 【新增这行】为 AI 冠军补写战绩履历！
+          recordRecentMatchForPlayer(champObj, tour.name, tour.type, "🏆 冠军", champPts, "单打");
         }
       }
 
-      // 👈 单打亚军发放奖金
+      // 单打亚军发放奖金与履历
       if (runnerUp.isUser) {
         let runnerPrize = calculateRoundPrize(tour.prizeAward, tour.drawSize, tour.currentRound - 1, tour.phase, true);
         gameState.player.money += runnerPrize;
@@ -1411,12 +1468,16 @@ function finishSubTournamentRound(tour, playerWonRound) {
 
         awardPoints(gameState.worldRanking.find(x => x.isUser), runnerUpPts);
         recordCareerMedal(gameState.player.name, 'S', gameState.player.year, tour.week, tour.name, tour.type, "男子单打");
+        recordRecentMatchForPlayer(gameState.worldRanking.find(x => x.isUser), tour.name, tour.type, "🥈 亚军", runnerUpPts, "单打");
         tour.isUserKnockedOut = true;
         showAlert(`🥈 单打荣获亚军：获得 +${runnerUpPts} 单打积分，奖金 +$${runnerPrize.toLocaleString()}！`, "赛事结算", "🥈");
       } else {
         let runnerObj = gameState.worldRanking.find(x => x.name === runnerUp.name);
         if (runnerObj) {
+          awardPoints(runnerObj, runnerUpPts);
           recordCareerMedal(runnerObj.name, 'S', gameState.player.year, tour.week, tour.name, tour.type, "男子单打");
+          // 👈 【新增这行】为 AI 亚军补写战绩履历！
+          recordRecentMatchForPlayer(runnerObj, tour.name, tour.type, "🥈 亚军", runnerUpPts, "单打");
         }
       }
     }
@@ -2373,63 +2434,226 @@ function confirmRetirement() {
   });
 }
 
+/* ==================== 豪华多维生涯退役结算与名人堂评级系统 (22+ 种结局) ==================== */
 function generateCareerSummary() {
   const p = gameState.player;
   const s = gameState.stats;
+  const ds = gameState.doublesStats || {};
+  const pd = gameState.playerDoubles || {};
+
+  // 1. 基础信息汇总
   const rankIdx = gameState.worldRanking.findIndex(x => x.isUser);
   const finalRank = rankIdx >= 0 ? rankIdx + 1 : 999;
-  const yearsActive = p.year - 2026;
-  const winRate = s.totalMatches > 0 ? ((s.wins / s.totalMatches) * 100).toFixed(1) + "%" : "0.0%";
+  const yearsActive = Math.max(1, (p.year || 2026) - 2026);
+  
+  // 单打统计
+  const singlesMatches = s.totalMatches || 0;
+  const singlesWins = s.wins || 0;
+  const singlesLosses = s.losses || 0;
+  const singlesWinRate = singlesMatches > 0 ? ((singlesWins / singlesMatches) * 100).toFixed(1) + "%" : "0.0%";
+  const singlesWinRateNum = singlesMatches > 0 ? (singlesWins / singlesMatches) * 100 : 0;
+  const singlesTitles = s.titles || 0;
+  const singlesBestRank = s.bestRank || finalRank;
 
-  document.getElementById('ret-name').innerText = p.name;
-  document.getElementById('ret-country').innerText = p.country;
-  document.getElementById('ret-years').innerText = `${yearsActive} 年 (2026 ~ ${p.year})`;
-  document.getElementById('ret-age').innerText = `${p.age} 岁`;
-  document.getElementById('ret-best-rank').innerText = `#${s.bestRank}`;
-  document.getElementById('ret-final-rank').innerText = `#${finalRank}`;
+  // 双打统计
+  const doublesMatches = ds.totalMatches || 0;
+  const doublesWins = ds.wins || 0;
+  const doublesLosses = ds.losses || 0;
+  const doublesWinRate = doublesMatches > 0 ? ((doublesWins / doublesMatches) * 100).toFixed(1) + "%" : "0.0%";
+  const doublesTitles = ds.titles || 0;
+  const userPair = gameState.doublesRanking?.find(x => x.isUserPair);
+  const finalDoublesRank = userPair ? (gameState.doublesRanking.indexOf(userPair) + 1) : 999;
+  const doublesBestRank = ds.bestRank || finalDoublesRank;
+  const pastPartnersCount = (pd.partnersHistory?.length || 0) + (pd.currentPartner ? 1 : 0);
 
-  document.getElementById('ret-matches').innerText = s.totalMatches;
-  document.getElementById('ret-record').innerText = `${s.wins}胜 ${s.losses}负`;
-  document.getElementById('ret-winrate').innerText = winRate;
-  document.getElementById('ret-streak').innerText = s.bestStreak || 0;
-  document.getElementById('ret-prize').innerText = `$${(s.totalPrizeWon || 0).toLocaleString()}`;
-  document.getElementById('ret-money').innerText = `$${p.money.toLocaleString()}`;
+  // 决胜局与抗压统计
+  const decideTotal = (s.decidingMatchesPlayed || 0) + (ds.decidingMatchesPlayed || 0);
+  const decideWon = (s.decidingMatchesWon || 0) + (ds.decidingMatchesWon || 0);
+  const decideRate = decideTotal > 0 ? ((decideWon / decideTotal) * 100).toFixed(1) + "%" : "0.0%";
+  const decideRateNum = decideTotal > 0 ? (decideWon / decideTotal) * 100 : 0;
 
-  document.getElementById('ret-major').innerText = s.titlesMajor || 0;
-  document.getElementById('ret-smash').innerText = s.titlesSmash || 0;
-  document.getElementById('ret-champ-star').innerText = (s.titlesChamp || 0) + (s.titlesStar || 0);
-  document.getElementById('ret-total-titles').innerText = s.titles || 0;
+  // 对阵世界前十
+  const top10Played = s.top10MatchesPlayed || 0;
+  const top10Won = s.top10MatchesWon || 0;
+  const top10Rate = top10Played > 0 ? ((top10Won / top10Played) * 100).toFixed(1) + "%" : "0.0%";
 
-  let tier = "D";
-  let desc = "";
-  const majors = s.titlesMajor || 0;
-  const smashes = s.titlesSmash || 0;
-  const totalTitles = s.titles || 0;
-  const bestRank = s.bestRank;
+  // 财富与赞助
+  const totalPrize = s.totalPrizeWon || 0;
+  const finalMoney = p.money || 0;
+  const gearSponsorName = p.sponsors?.gear?.name || (p.sponsor?.name || "无专业赞助");
+  const commercialsCount = p.sponsors?.commercials?.length || 0;
 
-  if (majors >= 3 && bestRank === 1) {
-    tier = "GOAT (乒坛至尊)";
-    desc = `无可挑剔的统治者！手握 ${majors} 座三大赛桂冠并登顶世界第一，与马龙、瓦尔德内尔等传奇并列乒坛史册！`;
-  } else if (majors >= 1 || (smashes >= 2 && bestRank <= 3)) {
-    tier = "SSS (世界传奇)";
-    desc = `大满贯级别的顶尖名将，屡次在世界大赛中问鼎巅峰，是国家队的绝对核心与时代领军人物！`;
-  } else if (totalTitles >= 5 || bestRank <= 10) {
-    tier = "S (乒坛巨星)";
-    desc = `常年位列世界前十的巡回赛顶级掠食者，巡回赛荣誉满身，国际乒联不可忽视的中流砥柱。`;
-  } else if (totalTitles >= 1 || bestRank <= 50) {
-    tier = "A (名将国手)";
-    desc = `拥有冠军头衔的高水平职业国手，多次代表国家参加巡回赛并斩获佳绩。`;
-  } else if (s.totalMatches >= 30) {
-    tier = "B (职业老兵)";
-    desc = `勤勉征战巡回赛的职业球员，经历了高强度的国际竞争洗礼。`;
-  } else {
-    tier = "C (乒坛新秀)";
-    desc = `短暂体验了职业巡回赛的节奏，早早告别了职业赛场。`;
+  // 伤病与医疗
+  const injuryHistory = p.injuryHistory || [];
+  const totalInjuries = injuryHistory.length;
+  const severeInjuries = injuryHistory.filter(i => i.isSevere).length;
+  const coachName = (typeof COACH_DATABASE !== 'undefined' ? COACH_DATABASE.find(c => c.id === (p.staff?.coach || 'coach_none'))?.name : '') || "自主训练";
+  const physioName = (typeof PHYSIO_DATABASE !== 'undefined' ? PHYSIO_DATABASE.find(ph => ph.id === (p.staff?.physio || 'physio_none'))?.name : '') || "常规理疗";
+
+  // 大赛奖牌统计
+  ensureCareerMedals();
+  const medals = gameState.careerMedals || [];
+  const goldCount = medals.filter(m => m.medal === 'G').length;
+  const silverCount = medals.filter(m => m.medal === 'S').length;
+  const bronzeCount = medals.filter(m => m.medal === 'B').length;
+
+  const majorGolds = (s.titlesOlympic || 0) + (s.titlesWTTC || 0) + (s.titlesWorldCup || 0);
+  const smashFinalsGolds = (s.titlesSmash || 0) + (s.titlesFinals || 0);
+  const champStarGolds = (s.titlesChamp || 0) + (s.titlesStar || 0);
+  const feederContGolds = (s.titlesFeeder || 0) + (s.titlesContender || 0);
+  const totalCareerTitles = singlesTitles + doublesTitles;
+
+  const finalFans = p.fans || 0;
+  // 优先级分支判断中加入顶流巨星结局：
+  if (finalFans >= 2000000 && finalMoney >= 60000) {
+    tier = "SSS";
+    title = "🌍 全球顶流 · 乒坛现象级体坛巨星";
+    desc = `无可匹敌的商业与赛场双料天花板！退役时坐拥 ${formatFanCount(finalFans)} 粉丝，商业代言与周边风靡世界，不仅是球台上的胜者，更是让乒乓球运动风靡全球的时代偶像！`;
   }
 
-  document.getElementById('ret-eval-tier').innerText = tier;
-  document.getElementById('ret-eval-desc').innerText = desc;
+  // 2. 填充 UI 基础数值
+  document.getElementById('ret-subtitle').innerText = `致敬 ${p.country} 名将【${p.name}】璀璨而难忘的乒乓生涯！`;
+  document.getElementById('ret-name-country').innerHTML = `${getFlagImgHtml(p.country)}${p.name} (${p.country})`;
+  document.getElementById('ret-years-age').innerText = `${yearsActive} 年 (${p.age}岁退役 · 2026~${p.year})`;
+  document.getElementById('ret-ranks').innerText = `#${singlesBestRank} / #${finalRank}`;
+  document.getElementById('ret-singles-record').innerText = `${singlesWins}胜 ${singlesLosses}负 (${singlesWinRate})`;
+  document.getElementById('ret-streak').innerText = `${s.bestStreak || 0} 连胜`;
+  document.getElementById('ret-top10-record').innerText = `${top10Won}胜 ${Math.max(0, top10Played - top10Won)}负 (${top10Rate})`;
 
+  document.getElementById('ret-doubles-best-rank').innerText = doublesBestRank < 900 ? `#${doublesBestRank}` : "未组队";
+  document.getElementById('ret-doubles-record').innerText = `${doublesWins}胜 ${doublesLosses}负 (${doublesWinRate})`;
+  document.getElementById('ret-doubles-titles').innerText = `${doublesTitles} 🏆`;
+  document.getElementById('ret-partners-count').innerText = `${pastPartnersCount} 位`;
+  document.getElementById('ret-decide-rate').innerText = `${decideRate} (${decideWon}/${decideTotal})`;
+  document.getElementById('ret-doubles-achievement').innerText = ds.bestAchievement || "无顶级荣誉";
+
+  document.getElementById('ret-prize').innerText = `$${totalPrize.toLocaleString()}`;
+  document.getElementById('ret-money').innerText = `$${finalMoney.toLocaleString()}`;
+  document.getElementById('ret-gear-sponsor').innerText = gearSponsorName;
+  document.getElementById('ret-commercials-count').innerText = `${commercialsCount} 项商业代言`;
+
+  document.getElementById('ret-injuries-total').innerText = `${totalInjuries} 次`;
+  document.getElementById('ret-injuries-severe').innerText = `${severeInjuries} 次`;
+  document.getElementById('ret-final-health').innerText = p.injury ? (INJURY_TYPES[p.injury]?.name || "受伤") : "健康完好";
+  document.getElementById('ret-final-health').style.color = p.injury ? "var(--accent)" : "#4ade80";
+  document.getElementById('ret-final-staff').innerText = `${coachName} / ${physioName}`;
+
+  document.getElementById('ret-major-gold').innerText = majorGolds;
+  document.getElementById('ret-smash-finals').innerText = smashFinalsGolds;
+  document.getElementById('ret-champ-star').innerText = champStarGolds;
+  document.getElementById('ret-feeder-cont').innerText = feederContGolds;
+  document.getElementById('ret-medals-summary').innerHTML = `<span style="color:#f59e0b;">🥇${goldCount}</span> <span style="color:#cbd5e1;">🥈${silverCount}</span> <span style="color:#d97706;">🥉${bronzeCount}</span>`;
+  document.getElementById('ret-total-titles').innerText = `${totalCareerTitles} 🏆`;
+  document.getElementById('ret-eval-date').innerText = `国际乒联 · ${p.year} 年终名人堂公报`;
+
+  // 3. 豪华多维结局分支判定引擎 (22 种专属评级)
+  let tier = "C";
+  let title = "乒坛新秀 · 匆匆过客";
+  let desc = "短暂体验了职业巡回赛的竞争与洗礼，过早告别了国际赛场。";
+
+  // 优先级 1：至高无上殿堂 (GOAT ~ SSS)
+  if (majorGolds >= 4 && singlesBestRank === 1) {
+    tier = "GOAT";
+    title = "👑 乒坛至尊 · 双圈大满贯球皇";
+    desc = `无可挑剔的绝对统治者！生涯斩获 ${majorGolds} 座三大赛最高荣誉，登顶世界第一，与马龙、瓦尔德内尔等传奇并列世界乒坛万神殿！`;
+  } else if ((s.titlesOlympic || 0) >= 1 && (s.titlesWTTC || 0) >= 1 && (s.titlesWorldCup || 0) >= 1) {
+    tier = "SSS";
+    title = "🌟 大满贯得主 · 时代领军人";
+    desc = "集齐奥运会、世锦赛、世界杯单打三大赛金牌完成超级大满贯！在世界乒乓球史上铸就了属于自己的黄金王朝。";
+  } else if (majorGolds >= 2 && singlesBestRank <= 3) {
+    tier = "SSS";
+    title = "🏆 乒坛传奇 · 世界大赛王者";
+    desc = `手握 ${majorGolds} 座世界三大赛金牌，常年雄踞世界前三，是国家队无可争议的核心台柱与大赛杀手。`;
+  }
+  // 优先级 2：双修与特殊巅峰 (SS+ ~ SS)
+  else if (singlesTitles >= 4 && doublesTitles >= 4 && singlesBestRank <= 5) {
+    tier = "SS";
+    title = "⚔️ 单双兼修 · 全能六边形球圣";
+    desc = `不可思议的全能巨星！单打（${singlesTitles}冠）与双打（${doublesTitles}冠）两线开花均位列世界最顶尖，团队赛与单项赛皆无可替代！`;
+  } else if (doublesTitles >= 6 && doublesBestRank <= 2) {
+    tier = "SS";
+    title = "👥 双打教父 · 战术协同天花板";
+    desc = `男子双打领域的绝世宗师！斩获 ${doublesTitles} 座双打桂冠并登顶双打世界排名前列，以神出鬼没的跑位配合载入双打史册。`;
+  } else if (smashFinalsGolds >= 3 && singlesBestRank <= 3) {
+    tier = "SS";
+    title = "💎 巡回赛霸主 · 商业大满贯掠食者";
+    desc = `在 WTT 大满贯与年终总决赛等顶级高额奖金赛事中展现极强统治力，累计夺得 ${smashFinalsGolds} 座顶级桂冠，名利双收！`;
+  }
+  // 优先级 3：顶尖巨星与特色球星 (S+ ~ S)
+  else if (decideRateNum >= 68 && decideTotal >= 10 && top10Won >= 4) {
+    tier = "S+";
+    title = "🦁 决胜狂魔 · 巨人心脏逆转王";
+    desc = `令全联盟胆寒的“大心脏”！决胜局胜率高达 ${decideRate}，多次在绝境挽救赛点翻盘世界前十，被国际乒联誉为最冷血的决胜专家！`;
+  } else if (silverCount >= 4 && goldCount <= 1 && singlesBestRank <= 5) {
+    tier = "S";
+    title = "🥈 悲情球圣 · 无冕相持大师";
+    desc = `无数次杀入世界大赛决赛却数度屈居亚军（${silverCount}枚银牌）。虽与最高桂冠屡屡擦肩，但他炉火纯青的球技赢得了全世界球迷的敬重！`;
+  } else if (totalCareerTitles >= 8 && singlesBestRank <= 10) {
+    tier = "S";
+    title = "🎖️ 巡回赛掠食者 · 顶尖十强名将";
+    desc = `长达数年稳居世界前十行列，生涯斩获 ${totalCareerTitles} 座巡回赛奖杯，是各大国际公开赛争冠签表中的绝对主力。`;
+  } else if (finalMoney >= 80000 && commercialsCount >= 3) {
+    tier = "S-";
+    title = "💼 商业巨子 · 乒坛顶级吸金顶流";
+    desc = `商业价值突破天际的体坛偶像！退役资产高达 $${finalMoney.toLocaleString()}，手握多项顶级跨国代言，开创了乒乓球员商业化的商业奇迹！`;
+  }
+  // 优先级 4：实力名将与专家 (A+ ~ A)
+  else if (singlesTitles >= 3 && singlesBestRank <= 25) {
+    tier = "A+";
+    title = "💥 巡回赛名将 · 重炮一流水准";
+    desc = `世界排名前 25 位的实力派国手，多次在挑战赛与球星赛登顶捧杯，球风凶悍硬朗，是国家队的中流砥柱。`;
+  } else if (doublesTitles >= 2 && doublesWinRate.includes("%") && parseFloat(doublesWinRate) >= 60) {
+    tier = "A";
+    title = "🤝 双打奇兵 · 黄金搭档专家";
+    desc = `拥有极高双打战术素养（双打胜率 ${doublesWinRate}），多次搭档不同队友夺得双打冠军，是双线作战不可或缺的王牌。`;
+  } else if (totalCareerTitles >= 2 && singlesBestRank <= 60) {
+    tier = "A";
+    title = "🏓 职业国手 · 冠军锦标得主";
+    desc = `拥有多座正式国际巡回赛冠军头衔，具备一流竞技水准，在国际乒坛留下了鲜明印记。`;
+  }
+  // 优先级 5：老兵、劳模与特质型 (B+ ~ B)
+  else if (yearsActive >= 8 && singlesMatches >= 40 && totalInjuries <= 1) {
+    tier = "B+";
+    title = "🛡️ 钢铁之躯 · 乒坛常青树老兵";
+    desc = `征战沙场 ${yearsActive} 个赛季的“铁人”！极其严苛的自律与身体管理使其在密集赛历下保持超低伤病率，令人肃然起敬。`;
+  } else if (feederContGolds >= 3 && singlesBestRank > 40) {
+    tier = "B+";
+    title = "🌾 支线霸主 · 资格赛突破专家";
+    desc = `支线赛与常规挑战赛的“夺冠收割机”（${feederContGolds}冠），在二级巡回赛中拥有绝对统治力，屡次以黑马姿态杀入正赛。`;
+  } else if (severeInjuries >= 2 || totalInjuries >= 5) {
+    tier = "B";
+    title = "🩹 伤痕累累 · 悲情抗争勇士";
+    desc = `天妒英才！生涯遭遇 ${totalInjuries} 次伤病折磨（${severeInjuries}次严重重伤），虽天赋卓越但屡屡被病痛阻断巅峰，令人扼腕叹息。`;
+  } else if (singlesMatches >= 25 && singlesWinRateNum >= 45) {
+    tier = "B";
+    title = "⚔️ 巡回赛老兵 · 勤勉实战派";
+    desc = `勤勉征战巡回赛的资深职业球员，出战 ${singlesMatches} 场高强度对决，历经国际风雨洗礼，战绩扎实。`;
+  }
+  // 优先级 6：新锐、过渡与基层 (C+ ~ D)
+  else if (yearsActive >= 4 && singlesMatches >= 15) {
+    tier = "C+";
+    title = "🏃 稳健工匠 · 职业绿叶坚守者";
+    desc = `在职业赛场默默耕耘 ${yearsActive} 载的基层选手，虽未登顶最高荣耀，但用汗水见证了巡回赛的繁荣与残酷。`;
+  } else if (singlesBestRank <= 120 && yearsActive <= 3 && singlesTitles >= 1) {
+    tier = "C+";
+    title = "🌠 昙花一现 · 闪耀流星新星";
+    desc = "初入职业赛场曾打出惊艳黑马表现斩获头衔，可惜未能长久维持巅峰状态，迅速告别了聚光灯。";
+  } else if (singlesMatches >= 8 && singlesWinRateNum < 40) {
+    tier = "C";
+    title = "🎯 苦战求索 · 资格赛突围者";
+    desc = "常年征战于资格赛与支线赛泥潭，胜率虽显被动，但展现了永不放弃的职业竞技拼搏精神。";
+  } else if (yearsActive <= 2 && singlesMatches <= 5) {
+    tier = "D";
+    title = "🌱 匆匆过客 · 业余之光探索者";
+    desc = "极其短暂地体验了职业巡回赛的节奏与门槛，随即在年轻时期选择转型开启新的人生轨迹。";
+  }
+
+  // 4. 写入最终评级卡片
+  document.getElementById('ret-eval-title').innerText = title;
+  document.getElementById('ret-eval-desc').innerText = desc;
+  document.getElementById('ret-eval-tier').innerText = tier;
+
+  // 展现弹窗
   document.getElementById('retirement-modal').style.display = 'flex';
 }
 

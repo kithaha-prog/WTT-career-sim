@@ -73,7 +73,14 @@ const PHYSIO_DATABASE = [
   { id: 'physio_master', name: '国家队首席康复专家', level: '顶级保障', weeklyCost: 2500, staminaDrainDiscount: 0.60, spaBonus: 45, desc: '训练/参赛消耗-60%，水疗恢复+45' }
 ];
 
-const KNOWN_BRANDS = ['红双喜', '蝴蝶', '斯帝卡', '亚萨卡', '尼塔谷', '挺拔', '多尼克', '骄猛', '银河', '岸度', 'VICTAS', '亚瑟士', '美津浓', '雷神', '729'];
+const KNOWN_BRANDS = [
+  '红双禧', '红双燕', '蝴蝶飞', '蝶恋花', '斯帝咖', '斯帝佳',
+  '亚萨咖', '鸭萨咖', '尼踏谷', '倪塔可', '挺拨', '挺霸',
+  '多霓克', '多尼可', '骄勐', '骄萌', '银禾', '银禾河',
+  '岸渡', '岸渡拓', '维克踏', '维克它', '亚瑟仕', '亚色仕',
+  '美津侬', '美卓浓', '雷申', '雷震', '柒贰玖', '柒贰玖友',
+  '李凝', '李林', '胜利拓', '胜力拓', '弘图'
+];
 
 const TROPHY_CAT_META = {
   olympic: { name: "夏季奥林匹克运动会 单打金牌", icon: "🥇", badge: "badge-olympic" },
@@ -114,6 +121,9 @@ let gameState = {
     name: "陈星远",
     country: "中国 (CHN)",
     age: 16,
+    fans: 200, // 👈 初始 200 粉丝
+    fanHistory: [], // 👈 粉丝走势记录
+    moneyHistory: [],
     hand: "右手 (Right-Handed)",
     grip: "横拍 (Shakehand)",
     style: "两面反胶弧圈结合快攻",
@@ -213,12 +223,48 @@ function absWeekIndex(week, year) {
 }
 
 // 裁剪某位选手超过 52 周窗口的历史积分记录，并重新汇总当前总积分
+/* ==================== ITTF 官方真实积分规则：52 周内最佳 8 站有效积分 ==================== */
+const RANKING_WINDOW_WEEKS = 52;     // 12 个月（52 周）有效窗口
+const MAX_COUNTING_TOURNAMENTS = 8;  // 最多计入 8 站最高分
+
+// 1. 单打选手积分重算：过滤 52 周内记录 -> 降序排序 -> 截取前 8 站求和
 function recomputePlayerPoints(pObj) {
   if (!pObj) return;
   if (!Array.isArray(pObj.pointsHistory)) pObj.pointsHistory = [];
+  
   const curAbs = absWeekIndex(gameState.player.week, gameState.player.year);
+  
+  // 步骤 A：过滤出 52 周 (12个月) 之内的有效参赛得分记录
   pObj.pointsHistory = pObj.pointsHistory.filter(e => (curAbs - absWeekIndex(e.w, e.y)) < RANKING_WINDOW_WEEKS);
-  pObj.points = Math.max(0, pObj.pointsHistory.reduce((s, e) => s + e.amt, 0));
+  
+  // 步骤 B：按单站得分从高到低排序，只截取最高的 8 站有效得分
+  let validScores = pObj.pointsHistory
+    .map(e => e.amt || 0)
+    .sort((a, b) => b - a)
+    .slice(0, MAX_COUNTING_TOURNAMENTS);
+
+  // 步骤 C：求和得出官方世界排名总积分
+  pObj.points = Math.max(0, validScores.reduce((sum, score) => sum + score, 0));
+}
+
+// 2. 双打组合积分重算：同样遵循 52 周内最佳 8 站有效积分
+function recomputePairDoublesPoints(pair) {
+  if (!pair) return;
+  if (!Array.isArray(pair.pointsHistory)) pair.pointsHistory = [];
+  
+  const curAbs = absWeekIndex(gameState.player.week, gameState.player.year);
+  
+  // 步骤 A：过滤 52 周内有效记录
+  pair.pointsHistory = pair.pointsHistory.filter(e => (curAbs - absWeekIndex(e.w, e.y)) < RANKING_WINDOW_WEEKS);
+
+  // 步骤 B：按得分降序提取前 8 站
+  let validScores = pair.pointsHistory
+    .map(e => e.amt || 0)
+    .sort((a, b) => b - a)
+    .slice(0, MAX_COUNTING_TOURNAMENTS);
+
+  // 步骤 C：求和
+  pair.points = Math.max(0, validScores.reduce((sum, score) => sum + score, 0));
 }
 
 // 全局唯一加分入口：为某位选手（玩家或 AI）在当前周记一笔积分，并立即重新汇总
@@ -613,15 +659,6 @@ function disbandAIPairIfContains(playerName) {
 
 /* ==================== 双打滚动积分与排名 ==================== */
 
-// 重新计算单个双打组合的总积分
-function recomputePairDoublesPoints(pair) {
-  if (!pair) return;
-  if (!Array.isArray(pair.pointsHistory)) pair.pointsHistory = [];
-  const curAbs = absWeekIndex(gameState.player.week, gameState.player.year);
-  pair.pointsHistory = pair.pointsHistory.filter(e => (curAbs - absWeekIndex(e.w, e.y)) < RANKING_WINDOW_WEEKS);
-  pair.points = Math.max(0, pair.pointsHistory.reduce((s, e) => s + e.amt, 0));
-}
-
 // 为双打组合发放赛事积分
 function awardDoublesPoints(pair, pts) {
   if (!pair || !pts) return;
@@ -907,11 +944,8 @@ function checkAIGearUpgrades() {
 
     let curRank = idx + 1;
     let pow = pl.basePow || 60;
-    
-    // 基础年换装概率仅为 8%
     let switchChance = 0.08;
 
-    // 前排顶尖选手换装概率适度增加
     if (curRank <= 15 && (!pl.gear || pl.gear.blade === 'b1' || pl.gear.blade === 'b2')) {
       switchChance = 0.50;
     } else if (curRank <= 80 && pl.gear && ['b1', 'b2', 'b10', 'b3', 'b44'].includes(pl.gear.blade)) {
@@ -927,7 +961,6 @@ function checkAIGearUpgrades() {
         ? GEAR_DATABASE.blade.find(b => b.id === pl.gear.blade) 
         : null;
 
-      // 仅在底板确实升级更换时，生成真实的新闻
       if (newBlade && newBlade.id !== oldBladeId) {
         const gearNewsItem = createAIGearChangeNews(pl, oldBladeId, newBlade, curRank);
         if (gearNewsItem) {
@@ -939,41 +972,102 @@ function checkAIGearUpgrades() {
   });
 }
 
-/* ==================== 3. AI 低概率年度器材更换机制 ==================== */
-function checkAIGearUpgrades() {
-  (gameState.worldRanking || []).forEach((pl, idx) => {
-    if (pl.isUser) return;
+/* ==================== 真实打法风格相生相克引擎 (分差 <= 5 生效) ==================== */
+function getStyleCategory(styleStr) {
+  if (!styleStr || typeof styleStr !== 'string') return 'ALLROUND';
+  const s = styleStr.toLowerCase();
+  if (s.includes('削球') || s.includes('削中反攻') || s.includes('长胶') || s.includes('生胶削')) return 'CHOP';
+  if (s.includes('快撕') || s.includes('超强速度') || s.includes('近台快攻') || s.includes('快弧')) return 'SPEED';
+  if (s.includes('直拍') || s.includes('推挡') || s.includes('日直') || s.includes('单面拉')) return 'PENHOLD';
+  if (s.includes('暴力') || s.includes('重炮') || s.includes('爆冲') || s.includes('大力量') || s.includes('两面弧圈')) return 'POWER';
+  if (s.includes('控制') || s.includes('六边形') || s.includes('手感') || s.includes('落点') || s.includes('魔术师')) return 'CONTROL';
+  return 'ALLROUND';
+}
 
-    let curRank = idx + 1;
-    let pow = pl.basePow || 60;
-    
-    // 基础年换装概率仅为 8%
-    let switchChance = 0.08;
+function getStyleAdvantage(p1Style, p2Style, p1Power, p2Power) {
+  const diff = Math.abs(p1Power - p2Power);
+  if (diff > 5) return { bonus: 0, reason: '' };
 
-    // 前排顶尖选手换装概率适度增加
-    if (curRank <= 15 && (!pl.gear || pl.gear.blade === 'b1' || pl.gear.blade === 'b2')) {
-      switchChance = 0.50;
-    } else if (curRank <= 80 && pl.gear && ['b1', 'b2', 'b10', 'b3', 'b44'].includes(pl.gear.blade)) {
-      switchChance = 0.35;
-    }
+  const cat1 = getStyleCategory(p1Style);
+  const cat2 = getStyleCategory(p2Style);
+  if (cat1 === cat2) return { bonus: 0, reason: '' };
 
-    if (Math.random() < switchChance) {
-      const oldBladeId = pl.gear?.blade;
-      assignAIGear(pl, curRank);
-      pl.stats = getEffectiveStatsForPlayer(pl);
+  const COUNTER_RULES = {
+    POWER: { targets: ['CHOP', 'ALLROUND'], reason: '单板质量极高，凭借绝对力量和旋转冲穿防守' },
+    SPEED: { targets: ['POWER'], reason: '近台借力极速快撕，压迫引拍空间，不给后撤蓄力时间' },
+    PENHOLD: { targets: ['ALLROUND'], reason: '前三板发抢凶狠，台内落点变化隐蔽多变' },
+    CHOP: { targets: ['SPEED', 'PENHOLD'], reason: '旋转剧烈多变，顶住快攻攻势，消耗对手体能与急躁心态' },
+    CONTROL: { targets: ['SPEED', 'POWER'], reason: '长短节奏变换与刁钻落点，打乱对手发力预判与步法' }
+  };
 
-      const newBlade = (typeof GEAR_DATABASE !== 'undefined' && GEAR_DATABASE.blade) 
-        ? GEAR_DATABASE.blade.find(b => b.id === pl.gear.blade) 
-        : null;
+  if (COUNTER_RULES[cat1] && COUNTER_RULES[cat1].targets.includes(cat2)) {
+    return { bonus: 3.5, reason: COUNTER_RULES[cat1].reason };
+  }
+  return { bonus: 0, reason: '' };
+}
 
-      // 仅在底板确实升级更换时，生成真实的新闻
-      if (newBlade && newBlade.id !== oldBladeId) {
-        const gearNewsItem = createAIGearChangeNews(pl, oldBladeId, newBlade, curRank);
-        if (gearNewsItem) {
-          if (!gameState.newsFeed) gameState.newsFeed = [];
-          gameState.newsFeed.unshift(gearNewsItem);
-        }
-      }
-    }
-  });
+/* ==================== 粉丝声望阶位与体系 ==================== */
+const FAN_TIERS = [
+  { min: 2000000, name: "🌍 国际体坛巨星", badge: "badge-smash", desc: "赛场享有极高助威声浪，每周收获巨额周边版税分红" },
+  { min: 300000,  name: "👑 国家级偶像",   badge: "badge-gold",  desc: "解锁顶奢商业代言，开启个人签名款特注底板分成" },
+  { min: 50000,   name: "🔥 巡回赛红人",   badge: "badge-star",  desc: "商务谈判溢价，客场享有现场声援" },
+  { min: 3000,    name: "🌟 地方新锐",     badge: "badge-cont",  desc: "开始获得媒体专访与关注" },
+  { min: 0,       name: "🌱 籍籍无名",     badge: "badge-feed",  desc: "初入职业赛场，暂无粉丝特权" }
+];
+
+function getPlayerFanTier(fans) {
+  const f = fans || 0;
+  return FAN_TIERS.find(t => f >= t.min) || FAN_TIERS[FAN_TIERS.length - 1];
+}
+
+// 👈 补回该函数：格式化粉丝数量显示（如 1250 -> 1.2k，350000 -> 35.0w）
+function formatFanCount(count) {
+  const c = count || 0;
+  if (c < 1000) return `${c}`;
+  if (c >= 10000) return `${(c / 10000).toFixed(1)}w`;
+  return `${(c / 1000).toFixed(1)}k`;
+}
+
+function addPlayerFans(delta, reason = "") {
+  if (!gameState.player) return;
+  if (gameState.player.fans === undefined) gameState.player.fans = 200;
+  
+  const oldTier = getPlayerFanTier(gameState.player.fans).name;
+  gameState.player.fans = Math.max(0, Math.round(gameState.player.fans + delta));
+  const newTier = getPlayerFanTier(gameState.player.fans).name;
+
+  if (delta > 0 && oldTier !== newTier) {
+    showAlert(
+      `🎉 <strong>粉丝声望晋级！</strong><br>你的全网粉丝突破至 <strong>${(gameState.player.fans).toLocaleString()}</strong>，正式加冕【<strong style="color:var(--accent-gold);">${newTier}</strong>】！<br><span style="color:var(--text-dim); font-size:0.8rem;">更多顶级商业赞助与赛场助威已解锁。</span>`,
+      "声望晋升", "🌟"
+    );
+  }
+}
+
+function recordFanHistoryPoint() {
+  const p = gameState.player;
+  if (!p.fanHistory) p.fanHistory = [];
+  let abs = absWeekIndex(p.week, p.year);
+  let fans = p.fans || 200;
+  let last = p.fanHistory[p.fanHistory.length - 1];
+  if (last && last.abs === abs) {
+    last.fans = fans;
+  } else {
+    p.fanHistory.push({ abs, week: p.week, year: p.year, fans });
+  }
+  if (p.fanHistory.length > 900) p.fanHistory = p.fanHistory.slice(-900);
+}
+
+function recordMoneyHistoryPoint() {
+  const p = gameState.player;
+  if (!p.moneyHistory) p.moneyHistory = [];
+  let abs = absWeekIndex(p.week, p.year);
+  let money = p.money || 0;
+  let last = p.moneyHistory[p.moneyHistory.length - 1];
+  if (last && last.abs === abs) {
+    last.money = money;
+  } else {
+    p.moneyHistory.push({ abs, week: p.week, year: p.year, money });
+  }
+  if (p.moneyHistory.length > 900) p.moneyHistory = p.moneyHistory.slice(-900);
 }

@@ -27,7 +27,7 @@ function switchSponsorCategory(cat, btn) {
   renderSponsorsCompact(gameState.worldRanking.findIndex(x => x.isUser) + 1);
 }
 
-// 3. 渲染赞助商列表（支持多商业代言同时生效与独立倒计时）
+// 3. 渲染赞助商列表（支持多商业代言、冷却倒计时与独立状态）
 function renderSponsorsCompact(currentRank) {
   ensurePlayerSponsors();
   const container = document.getElementById('sponsors-container');
@@ -35,6 +35,7 @@ function renderSponsorsCompact(currentRank) {
 
   const list = (typeof SPONSORS_DATABASE !== 'undefined' ? SPONSORS_DATABASE[currentSponsorCategory] : []) || [];
   const p = gameState.player;
+  if (!p.sponsorCooldowns) p.sponsorCooldowns = {};
 
   if (list.length === 0) {
     container.innerHTML = `<div style="grid-column: 1/-1; color: var(--text-dim); font-size: 0.85rem; padding: 10px;">暂无该类型赞助商</div>`;
@@ -42,7 +43,7 @@ function renderSponsorsCompact(currentRank) {
   }
 
   container.innerHTML = list.map(s => {
-    // 器材赞助检查单个对象；商业代言在 commercials 数组中查找
+    // 1. 检查是否已签约
     let activeContract = null;
     if (s.type === 'gear') {
       activeContract = (p.sponsors.gear && p.sponsors.gear.id === s.id) ? p.sponsors.gear : null;
@@ -53,6 +54,20 @@ function renderSponsorsCompact(currentRank) {
     const isSigned = Boolean(activeContract);
     const canNegotiate = currentRank <= s.rankReq;
 
+    // 2. 检查是否处于谈判冷却期
+    let isCooling = false;
+    let coolWeeksLeft = 0;
+    const coolData = p.sponsorCooldowns[s.id];
+    if (coolData) {
+      const curAbs = (typeof absWeekIndex === 'function') ? absWeekIndex(p.week, p.year) : (p.year * 52 + p.week);
+      const coolAbs = (typeof absWeekIndex === 'function') ? absWeekIndex(coolData.week, coolData.year) : (coolData.year * 52 + coolData.week);
+      if (curAbs < coolAbs) {
+        isCooling = true;
+        coolWeeksLeft = coolAbs - curAbs;
+      }
+    }
+
+    // 3. 按钮状态构造
     let statusHtml = '';
     if (isSigned) {
       statusHtml = `
@@ -60,6 +75,12 @@ function renderSponsorsCompact(currentRank) {
           <span class="badge badge-gold" style="font-size:0.68rem;">已签约 ($${activeContract.weeklyPay}/周)</span>
           <div style="font-size:0.68rem; color:var(--accent-cyan); margin-top:2px;">余 ${activeContract.weeksLeft} 周</div>
         </div>
+      `;
+    } else if (isCooling) {
+      statusHtml = `
+        <button class="btn-action" style="padding:4px 10px; font-size:0.72rem; color:var(--text-dim); opacity:0.65; cursor:not-allowed;" title="谈判冷却中，还剩 ${coolWeeksLeft} 周" onclick="openNegotiateModal('${s.id}', '${s.type}')">
+          ⏳ ${coolWeeksLeft}周后
+        </button>
       `;
     } else if (canNegotiate) {
       statusHtml = `<button class="btn-gold" style="padding:4px 10px; font-size:0.72rem;" onclick="openNegotiateModal('${s.id}', '${s.type}')">谈判签约</button>`;
@@ -82,11 +103,20 @@ function renderSponsorsCompact(currentRank) {
 }
 
 // 4. 打开谈判弹窗
+// 4. 打开谈判弹窗
 function openNegotiateModal(sponsorId, type) {
   const s = (SPONSORS_DATABASE[type] || []).find(x => x.id === sponsorId);
   if (!s) return;
 
-  const p = gameState.player;
+  const p = gameState.player; // 👈 移动到此处优先声明
+
+  // 检查粉丝门槛
+  const pFans = p.fans || 0;
+  if (s.fanReq && pFans < s.fanReq) {
+    showAlert(`🔒 人气门槛不足！【${s.name}】要求选手全网粉丝达到 <strong>${formatFanCount(s.fanReq)}</strong>（当前: ${formatFanCount(pFans)}），请继续在赛场打出亮眼战绩积累人气！`, "商业代言门槛", "💼");
+    return;
+  }
+  
   if (!p.sponsorCooldowns) p.sponsorCooldowns = {};
   
   const coolData = p.sponsorCooldowns[sponsorId];
