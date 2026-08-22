@@ -171,6 +171,17 @@
     font-family: var(--font-display);
   }
 
+  /* 奖杯真实图片样式 */
+  /* 奖杯图标自适应尺寸 */
+  .trophy-img {
+    height: 36px;                 /* 锁定标准高度 */
+    max-width: 90px;              /* 允许横版图片自然向两侧展开 */
+    width: auto;                  /* 保持原图宽高比，不拉伸 */
+    object-fit: contain;
+    margin-bottom: 4px;
+    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+  }
+
   /* 中间导航胶囊栏 */
   .nav-capsule-bar {
     display: flex;
@@ -4406,47 +4417,47 @@
 
         <div class="trophy-grid" style="margin: auto 0;">
           <div class="trophy-badge gold-glow" style="cursor:pointer;" onclick="openTrophyDetailModal('olympic')">
-            <div class="trophy-icon">🥇</div>
+            <img src="./Trophies/olympics.jpg" class="trophy-img" alt="奥运会">
             <div class="trophy-name" id="trophy-lbl-olympic">奥运会单打</div>
             <div class="trophy-val" id="st-title-olympic">0</div>
           </div>
           <div class="trophy-badge gold-glow" style="cursor:pointer;" onclick="openTrophyDetailModal('wttc')">
-            <div class="trophy-icon">🏆</div>
+            <img src="./Trophies/WTTC.jpg" class="trophy-img" alt="世乒赛">
             <div class="trophy-name" id="trophy-lbl-wttc">世乒赛单打</div>
             <div class="trophy-val" id="st-title-wttc">0</div>
           </div>
           <div class="trophy-badge gold-glow" style="cursor:pointer;" onclick="openTrophyDetailModal('wc')">
-            <div class="trophy-icon">🌍</div>
+            <img src="./Trophies/ITTF World Cup.jpg" class="trophy-img" alt="世界杯">
             <div class="trophy-name" id="trophy-lbl-wc">世界杯单打</div>
             <div class="trophy-val" id="st-title-wc">0</div>
           </div>
           <div class="trophy-badge smash-glow" style="cursor:pointer;" onclick="openTrophyDetailModal('smash')">
-            <div class="trophy-icon">🌟</div>
+            <img src="./Trophies/Grand Smash.jpg" class="trophy-img" alt="大满贯">
             <div class="trophy-name">WTT 大满贯</div>
             <div class="trophy-val" id="st-title-smash">0</div>
           </div>
           <div class="trophy-badge smash-glow" style="cursor:pointer;" onclick="openTrophyDetailModal('finals')">
-            <div class="trophy-icon">👑</div>
+            <img src="./Trophies/WTT Finals.jpg" class="trophy-img" alt="总决赛">
             <div class="trophy-name">WTT 年终总决赛</div>
             <div class="trophy-val" id="st-title-finals">0</div>
           </div>
           <div class="trophy-badge purple-glow" style="cursor:pointer;" onclick="openTrophyDetailModal('champ')">
-            <div class="trophy-icon">🎖️</div>
+            <img src="./Trophies/WTT Champions.jpg" class="trophy-img" alt="冠军赛">
             <div class="trophy-name">WTT 冠军赛 1000</div>
             <div class="trophy-val" id="st-title-champ">0</div>
           </div>
           <div class="trophy-badge blue-glow" style="cursor:pointer;" onclick="openTrophyDetailModal('star')">
-            <div class="trophy-icon">⭐</div>
+            <img src="./Trophies/WTT Star Contender.jpg" class="trophy-img" alt="球星挑战赛">
             <div class="trophy-name">球星挑战赛 600</div>
             <div class="trophy-val" id="st-title-star">0</div>
           </div>
           <div class="trophy-badge green-glow" style="cursor:pointer;" onclick="openTrophyDetailModal('contender')">
-            <div class="trophy-icon">🏓</div>
+            <img src="./Trophies/WTT Contender.jpg" class="trophy-img" alt="常规挑战赛">
             <div class="trophy-name">常规挑战赛 400</div>
             <div class="trophy-val" id="st-title-contender">0</div>
           </div>
           <div class="trophy-badge dim-glow" style="cursor:pointer;" onclick="openTrophyDetailModal('feeder')">
-            <div class="trophy-icon">🥉</div>
+            <img src="./Trophies/WTT Feeder.jpg" class="trophy-img" alt="支线赛">
             <div class="trophy-name">支线赛 / 洲际赛</div>
             <div class="trophy-val" id="st-title-feeder">0</div>
           </div>

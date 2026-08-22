@@ -83,15 +83,51 @@ const KNOWN_BRANDS = [
 ];
 
 const TROPHY_CAT_META = {
-  olympic: { name: "夏季奥林匹克运动会 单打金牌", icon: "🥇", badge: "badge-olympic" },
-  wttc: { name: "世界乒乓球锦标赛 单打冠军", icon: "🏆", badge: "badge-smash" },
-  wc: { name: "单打世界杯 冠军", icon: "🌍", badge: "badge-gold" },
-  smash: { name: "WTT 大满贯 冠军", icon: "🌟", badge: "badge-smash" },
-  finals: { name: "WTT 年终总决赛 冠军", icon: "👑", badge: "badge-smash" },
-  champ: { name: "WTT 冠军赛 1000 冠军", icon: "🎖️", badge: "badge-champ" },
-  star: { name: "WTT 球星挑战赛 600 冠军", icon: "⭐", badge: "badge-star" },
-  contender: { name: "WTT 常规挑战赛 400 冠军", icon: "🏓", badge: "badge-cont" },
-  feeder: { name: "WTT 支线赛 / 洲际赛 冠军", icon: "🥉", badge: "badge-feed" }
+  olympic: { 
+    name: "夏季奥林匹克运动会 单打金牌", 
+    icon: '<img src="./Trophies/olympics.jpg" style="height:22px; width:auto; max-width:55px; object-fit:contain; vertical-align:middle; margin-right:6px;">', 
+    badge: "badge-olympic" 
+  },
+  wttc: { 
+    name: "世界乒乓球锦标赛 单打冠军", 
+    icon: '<img src="./Trophies/WTTC.jpg" style="height:22px; width:auto; max-width:55px; object-fit:contain; vertical-align:middle; margin-right:6px;">', 
+    badge: "badge-smash" 
+  },
+  wc: { 
+    name: "单打世界杯 冠军", 
+    icon: '<img src="./Trophies/ITTF World Cup.jpg" style="height:22px; width:auto; max-width:55px; object-fit:contain; vertical-align:middle; margin-right:6px;">', 
+    badge: "badge-gold" 
+  },
+  smash: { 
+    name: "WTT 大满贯 冠军", 
+    icon: '<img src="./Trophies/Grand Smash.jpg" style="height:22px; width:auto; max-width:55px; object-fit:contain; vertical-align:middle; margin-right:6px;">', 
+    badge: "badge-smash" 
+  },
+  finals: { 
+    name: "WTT 年终总决赛 冠军", 
+    icon: '<img src="./Trophies/WTT Finals.jpg" style="height:22px; width:auto; max-width:55px; object-fit:contain; vertical-align:middle; margin-right:6px;">', 
+    badge: "badge-smash" 
+  },
+  champ: { 
+    name: "WTT 冠军赛 1000 冠军", 
+    icon: '<img src="./Trophies/WTT Champions.jpg" style="height:22px; width:auto; max-width:55px; object-fit:contain; vertical-align:middle; margin-right:6px;">', 
+    badge: "badge-champ" 
+  },
+  star: { 
+    name: "WTT 球星挑战赛 600 冠军", 
+    icon: '<img src="./Trophies/WTT Star Contender.jpg" style="height:22px; width:auto; max-width:55px; object-fit:contain; vertical-align:middle; margin-right:6px;">', 
+    badge: "badge-star" 
+  },
+  contender: { 
+    name: "WTT 常规挑战赛 400 冠军", 
+    icon: '<img src="./Trophies/WTT Contender.jpg" style="height:22px; width:auto; max-width:55px; object-fit:contain; vertical-align:middle; margin-right:6px;">', 
+    badge: "badge-cont" 
+  },
+  feeder: { 
+    name: "WTT 支线赛 / 洲际赛 冠军", 
+    icon: '<img src="./Trophies/WTT Feeder.jpg" style="height:22px; width:auto; max-width:55px; object-fit:contain; vertical-align:middle; margin-right:6px;">', 
+    badge: "badge-feed" 
+  }
 };
 
 // 定义收录的重要赛事分类与排序

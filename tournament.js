@@ -69,7 +69,7 @@ function buildFeederEvent(week, year, seedOffset) {
   const idx = Math.abs(week * 7 + seedOffset * 13 + year) % FEEDER_CITY_POOL.length;
   const city = FEEDER_CITY_POOL[idx];
   return {
-    name: `WTT 支线赛 ${city}站 (Feeder ${city})`,
+    name: `WTT 支线赛 ${city}站`,
     type: "Feeder", level: "badge-feed", points: 125, drawSize: 32,
     directCut: 300, qualiCut: 500, maxRank: 33, prize: 3000
   };
@@ -1508,6 +1508,31 @@ function finishSubTournamentRound(tour, playerWonRound) {
       }
 
       if (isDoubles) {
+        // 在 tournament.js 的 if (isDoubles) -> if (champ.isUser) 内添加：
+        ensureTrophyRecords();
+        let cat = "feeder";
+        if (tour.type === "Olympic") cat = "olympic";
+        else if (tour.type === "WTTC") cat = "wttc";
+        else if (tour.type === "World Cup") cat = "wc";
+        else if (tour.type === "Grand Smash") cat = "smash";
+        else if (tour.type === "Finals") cat = "finals";
+        else if (tour.type === "Champions") cat = "champ";
+        else if (tour.type === "Star Contender") cat = "star";
+        else if (tour.type === "Contender") cat = "contender";
+
+        let dEventName = tour.name.includes("双打") ? tour.name : `${tour.name} (双打)`;
+        let exists = gameState.trophyRecords.some(t => t.year === gameState.player.year && t.week === tour.week && t.eventName === dEventName && t.isDoubles);
+        if (!exists) {
+          gameState.trophyRecords.push({
+            categoryKey: cat,
+            eventName: dEventName,
+            year: gameState.player.year,
+            week: tour.week,
+            points: champPts,
+            prize: tour.prizeAward || 0,
+            isDoubles: true
+          });
+        }
         const userPair = gameState.doublesRanking?.find(p => p.isUserPair);
         awardDoublesPoints(userPair, earnedPts);
         let userObj = gameState.worldRanking.find(x => x.isUser);

@@ -1369,20 +1369,32 @@ function closeRankHistoryModal() {
 
 function openTrophyDetailModal(catKey) {
   ensureTrophyRecords();
+  const isDoubles = (typeof currentStatsViewMode !== 'undefined' && currentStatsViewMode === 'doubles');
   const meta = TROPHY_CAT_META[catKey] || { name: "冠军荣誉", icon: "🏆", badge: "badge-gold" };
   const modal = document.getElementById('trophy-detail-modal');
   const title = document.getElementById('trophy-modal-title');
   const body = document.getElementById('trophy-modal-body');
 
-  title.innerHTML = `${meta.icon} ${meta.name} 夺冠历程`;
+  // 1. 动态生成标题：双打模式下将“单打”替换为“双打”，无单打字样的补充“双打”
+  let displayName = meta.name;
+  if (isDoubles) {
+    displayName = displayName.includes("单打") 
+      ? displayName.replace(/单打/g, "双打") 
+      : `${displayName} (双打)`;
+  }
+  title.innerHTML = `${meta.icon} ${displayName} 夺冠历程`;
 
-  const list = gameState.trophyRecords.filter(t => t.categoryKey === catKey);
+  // 2. 根据单打/双打视角严格隔离筛选记录
+  const list = (gameState.trophyRecords || []).filter(t => {
+    const itemIsDoubles = Boolean(t.isDoubles || (t.eventName && t.eventName.includes('双打')));
+    return t.categoryKey === catKey && itemIsDoubles === isDoubles;
+  });
 
   if (list.length === 0) {
     body.innerHTML = `
       <div style="text-align:center; padding:36px 10px; color:var(--text-dim);">
         <div style="font-size:2.4rem; margin-bottom:8px;">🏛️</div>
-        <div style="font-size:0.95rem; font-weight:bold; color:var(--text);">尚未斩获该级别冠军头衔</div>
+        <div style="font-size:0.95rem; font-weight:bold; color:var(--text);">尚未斩获该级别【${isDoubles ? '双打' : '单打'}】冠军头衔</div>
         <div style="font-size:0.8rem; margin-top:4px;">继续征战 WTT / ITTF 巡回赛，向最高荣誉发起冲击！</div>
       </div>`;
   } else {
@@ -1397,7 +1409,7 @@ function openTrophyDetailModal(catKey) {
           </div>
         </div>
         <div style="text-align:right; flex-shrink:0;">
-          <span class="badge ${meta.badge}">🏆 冠军</span>
+          <span class="badge ${meta.badge}">🏆 ${isDoubles ? '双打' : ''}冠军</span>
           ${item.points > 0 ? `<div style="font-size:0.75rem; color:var(--accent-blue); margin-top:4px; font-weight:bold;">+${item.points}分 ${item.prize > 0 ? `| $${item.prize.toLocaleString()}` : ''}</div>` : ''}
         </div>
       </div>
